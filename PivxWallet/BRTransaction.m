@@ -40,8 +40,12 @@
 
 @interface BRTransaction ()
 
-@property (nonatomic, strong) NSMutableArray *hashes, *indexes, *inScripts, *signatures, *sequences;
-@property (nonatomic, strong) NSMutableArray *amounts, *addresses, *outScripts;
+//vin
+@property (nonatomic, strong) NSMutableArray *hashes, *indexes, *inScripts, *signatures, *sequences;    //hashes,indexes->prevout, signatures->scriptSig
+@property (nonatomic, strong) NSMutableArray *in_encryptionKey, *in_keyImage, *in_decoys, *in_masternodeStealthAddress, *in_s, *in_R;
+//vout
+@property (nonatomic, strong) NSMutableArray *amounts, *addresses, *outScripts;     //outScripts->scriptPubKey, address->converted string from scriptPubKey
+@property (nonatomic, strong) NSMutableArray *out_txPriv, *out_txPub, *out_maskValue, *out_masternodeStealthAddress, *out_commitment;
 
 @end
 
@@ -57,14 +61,31 @@
     if (! (self = [super init])) return nil;
     
     _version = TX_VERSION;
+    
+    //vin
     self.hashes = [NSMutableArray array];
     self.indexes = [NSMutableArray array];
     self.inScripts = [NSMutableArray array];
+    self.signatures = [NSMutableArray array];
+    self.sequences = [NSMutableArray array];
+    self.in_encryptionKey = [NSMutableArray array];
+    self.in_keyImage = [NSMutableArray array];
+    self.in_decoys = [NSMutableArray array];
+    self.in_masternodeStealthAddress = [NSMutableArray array];
+    self.in_s = [NSMutableArray array];
+    self.in_R = [NSMutableArray array];
+    
+    //vout
     self.amounts = [NSMutableArray array];
     self.addresses = [NSMutableArray array];
     self.outScripts = [NSMutableArray array];
-    self.signatures = [NSMutableArray array];
-    self.sequences = [NSMutableArray array];
+    self.out_txPriv = [NSMutableArray array];
+    self.out_txPub = [NSMutableArray array];
+    self.out_maskValue = [NSMutableArray array];
+    self.out_masternodeStealthAddress = [NSMutableArray array];
+    self.out_commitment = [NSMutableArray array];
+    
+    self.S = [NSMutableArray array];
     _lockTime = TX_LOCKTIME;
     _blockHeight = TX_UNCONFIRMED;
     return self;
@@ -97,6 +118,31 @@
             off += l.unsignedIntegerValue;
             [self.sequences addObject:@([message UInt32AtOffset:off])]; // input sequence number (for replacement tx)
             off += sizeof(uint32_t);
+            d = [message dataAtOffset:off length:&l];
+            [self.in_encryptionKey addObject:(d.length > 0) ? d : [NSNull null]]; // input encryptionKey
+            off += l.unsignedIntegerValue;
+            d = [message dataAtOffset:off length:&l];
+            [self.in_keyImage addObject:(d.length > 0) ? d : [NSNull null]]; // input keyImage
+            off += l.unsignedIntegerValue;
+            NSUInteger decoy_count = (NSUInteger)[message varIntAtOffset:off length:&l]; // decoys count
+            off += l.unsignedIntegerValue;
+            NSMutableArray *decoy = [NSMutableArray array];
+            for (NSUInteger j = 0; j < decoy_count; j++) {  //decoys
+                [decoy addObject:uint256_obj([message hashAtOffset:off])];
+                off += sizeof(UInt256);
+                [decoy addObject:@([message UInt32AtOffset:off])];
+                off += sizeof(uint32_t);
+            }
+            [self.in_decoys addObject:decoy];
+            d = [message dataAtOffset:off length:&l];
+            [self.in_masternodeStealthAddress addObject:(d.length > 0) ? d : [NSNull null]]; // input masternodestealthAddress
+            off += l.unsignedIntegerValue;
+            d = [message dataAtOffset:off length:&l];
+            [self.in_s addObject:(d.length > 0) ? d : [NSNull null]]; // input s
+            off += l.unsignedIntegerValue;
+            d = [message dataAtOffset:off length:&l];
+            [self.in_R addObject:(d.length > 0) ? d : [NSNull null]]; // input R
+            off += l.unsignedIntegerValue;
         }
 
         count = (NSUInteger)[message varIntAtOffset:off length:&l]; // output count
@@ -110,9 +156,61 @@
             off += l.unsignedIntegerValue;
             address = [NSString addressWithScriptPubKey:d]; // address from output script if applicable
             [self.addresses addObject:(address) ? address : [NSNull null]];
+            d = [message dataAtOffset:off length:&l];
+            [self.out_txPriv addObject:(d) ? d : [NSNull null]]; // output txPriv
+            off += l.unsignedIntegerValue;
+            d = [message dataAtOffset:off length:&l];
+            [self.out_txPub addObject:(d) ? d : [NSNull null]]; // output txPub
+            off += l.unsignedIntegerValue;
+            
+            NSMutableArray *mask = [NSMutableArray array];      //output maskValue
+            [mask addObject:uint256_obj([message hashAtOffset:off])];   //maskValue->amount
+            off += sizeof(UInt256);
+            [mask addObject:uint256_obj([message hashAtOffset:off])];   //maskValue->mask
+            off += sizeof(UInt256);
+            [mask addObject:uint256_obj([message hashAtOffset:off])];   //maskValue->hashOfKey
+            off += sizeof(UInt256);
+            [self.out_maskValue addObject:mask];
+            d = [message dataAtOffset:off length:&l];
+            [self.out_masternodeStealthAddress addObject:(d.length > 0) ? d : [NSNull null]]; // output masternodestealthAddress
+            off += l.unsignedIntegerValue;
+            d = [message dataAtOffset:off length:&l];
+            [self.out_commitment addObject:(d.length > 0) ? d : [NSNull null]]; // output commitment
+            off += l.unsignedIntegerValue;
         }
 
         _lockTime = [message UInt32AtOffset:off]; // tx locktime
+        off += sizeof(uint32_t);
+        _hasPaymentID = [message UInt8AtOffset:off]; // tx haspaymentid
+        off += sizeof(uint8_t);
+        if (_hasPaymentID != 0) {
+            _paymentID = [message UInt64AtOffset:off]; // tx paymentid
+            off += sizeof(uint64_t);
+        }
+        _txType = [message UInt32AtOffset:off]; // tx txType
+        off += sizeof(uint32_t);
+        _bulletProofs = [message dataAtOffset:off length:&l];   //tx bulletproofs
+        off += l.unsignedIntegerValue;
+        _nTxFee = [message UInt64AtOffset:off]; // tx nTxFee
+        off += sizeof(uint64_t);
+        _c = [message hashAtOffset:off];  //tx c
+        off += sizeof(UInt256);
+        
+        count = (NSUInteger)[message varIntAtOffset:off length:&l]; // tx S count
+        off += l.unsignedIntegerValue;
+        for (NSUInteger i = 0; i < count; i++) { // tx S item
+            NSMutableArray *subItem = [NSMutableArray array];
+            NSUInteger subCount = (NSUInteger)[message varIntAtOffset:off length:&l];   //tx S subCount
+            off += l.unsignedIntegerValue;
+            for (NSUInteger j = 0; j < subCount; j++) { // tx S subitem
+                [subItem addObject:uint256_obj([message hashAtOffset:off])];
+                off += sizeof(UInt256);
+            }
+            [_S addObject:subItem];
+        }
+        _ntxFeeKeyImage = [message dataAtOffset:off length:&l];     // tx ntxFeeKeyImage
+        off += l.unsignedIntegerValue;
+        
         _txHash = self.data.SHA256_2;
     }
     
@@ -219,6 +317,36 @@ outputAddresses:(NSArray *)addresses outputAmounts:(NSArray *)amounts
     return self.sequences;
 }
 
+- (NSArray *)inputEncryptionKey
+{
+    return self.in_encryptionKey;
+}
+
+- (NSArray *)inputKeyImage
+{
+    return self.in_keyImage;
+}
+
+- (NSArray *)inputDecoys
+{
+    return self.in_decoys;
+}
+
+- (NSArray *)inputMasternodeStealthAddress
+{
+    return self.in_masternodeStealthAddress;
+}
+
+- (NSArray *)inputS
+{
+    return self.in_s;
+}
+
+- (NSArray *)inputR
+{
+    return self.in_R;
+}
+
 - (NSArray *)outputAmounts
 {
     return self.amounts;
@@ -232,6 +360,31 @@ outputAddresses:(NSArray *)addresses outputAmounts:(NSArray *)amounts
 - (NSArray *)outputScripts
 {
     return self.outScripts;
+}
+
+- (NSArray *)outputTxPriv
+{
+    return self.out_txPriv;
+}
+
+- (NSArray *)outputTxPub
+{
+    return self.out_txPub;
+}
+
+- (NSArray *)outputMaskValue
+{
+    return self.out_maskValue;
+}
+
+- (NSArray *)outputMasternodeStealthAddress
+{
+    return self.out_masternodeStealthAddress;
+}
+
+- (NSArray *)outputCommitment
+{
+    return self.out_commitment;
 }
 
 - (NSString *)description
@@ -362,8 +515,9 @@ sequence:(uint32_t)sequence
 - (NSData *)toDataWithSubscriptIndex:(NSUInteger)subscriptIndex
 {
     UInt256 hash;
-    NSMutableData *d = [NSMutableData dataWithCapacity:10 + TX_INPUT_SIZE*self.hashes.count +
-                        TX_OUTPUT_SIZE*self.addresses.count];
+//    NSMutableData *d = [NSMutableData dataWithCapacity:10 + TX_INPUT_SIZE*self.hashes.count +
+//                        TX_OUTPUT_SIZE*self.addresses.count];
+    NSMutableData *d = [NSMutableData data];
 
     [d appendUInt32:self.version];
     [d appendVarInt:self.hashes.count];
@@ -385,17 +539,111 @@ sequence:(uint32_t)sequence
         else [d appendVarInt:0];
         
         [d appendUInt32:[self.sequences[i] unsignedIntValue]];
+        
+        if (self.in_encryptionKey[i] != [NSNull null]) {
+            [d appendVarInt:[self.in_encryptionKey[i] length]];
+            [d appendData:self.in_encryptionKey[i]];
+        } else [d appendVarInt:0];
+        
+        if (self.in_keyImage[i] != [NSNull null]) {
+            [d appendVarInt:[self.in_keyImage[i] length]];
+            [d appendData:self.in_keyImage[i]];
+        } else [d appendVarInt:0];
+        
+        if (self.in_decoys[i] != [NSNull null]) {
+            NSMutableArray *decoy = (NSMutableArray *)self.in_decoys[i];
+            [d appendVarInt:decoy.count / 2];
+            for (NSUInteger j = 0; j < decoy.count; j=j+2) {
+                [decoy[j] getValue:&hash];
+                [d appendBytes:&hash length:sizeof(hash)];
+                [d appendUInt32:[decoy[j+1] unsignedIntValue]];
+            }
+        } else [d appendVarInt:0];
+        
+        if (self.in_masternodeStealthAddress[i] != [NSNull null]) {
+            [d appendVarInt:[self.in_masternodeStealthAddress[i] length]];
+            [d appendData:self.in_masternodeStealthAddress[i]];
+        } else [d appendVarInt:0];
+        
+        if (self.in_s[i] != [NSNull null]) {
+            [d appendVarInt:[self.in_s[i] length]];
+            [d appendData:self.in_s[i]];
+        } else [d appendVarInt:0];
+        
+        if (self.in_R[i] != [NSNull null]) {
+            [d appendVarInt:[self.in_R[i] length]];
+            [d appendData:self.in_R[i]];
+        } else [d appendVarInt:0];
     }
     
     [d appendVarInt:self.amounts.count];
     
     for (NSUInteger i = 0; i < self.amounts.count; i++) {
         [d appendUInt64:[self.amounts[i] unsignedLongLongValue]];
-        [d appendVarInt:[self.outScripts[i] length]];
-        [d appendData:self.outScripts[i]];
+        
+        if (self.outScripts[i] != [NSNull null]) {
+            [d appendVarInt:[self.outScripts[i] length]];
+            [d appendData:self.outScripts[i]];
+        } else [d appendVarInt:0];
+        
+        if (self.out_txPriv[i] != [NSNull null]) {
+            [d appendVarInt:[self.out_txPriv[i] length]];
+            [d appendData:self.out_txPriv[i]];
+        } else [d appendVarInt:0];
+        
+        if (self.out_txPub[i] != [NSNull null]) {
+            [d appendVarInt:[self.out_txPub[i] length]];
+            [d appendData:self.out_txPub[i]];
+        } else [d appendVarInt:0];
+        
+        if (self.out_maskValue[i] != [NSNull null]) {
+            NSMutableArray *mask = (NSMutableArray *)self.out_maskValue[i];
+            [mask[0] getValue:&hash];
+            [d appendBytes:&hash length:sizeof(hash)];
+            [mask[1] getValue:&hash];
+            [d appendBytes:&hash length:sizeof(hash)];
+            [mask[2] getValue:&hash];
+            [d appendBytes:&hash length:sizeof(hash)];
+        }
+        
+        if (self.out_masternodeStealthAddress[i] != [NSNull null]) {
+            [d appendVarInt:[self.out_masternodeStealthAddress[i] length]];
+            [d appendData:self.out_masternodeStealthAddress[i]];
+        } else [d appendVarInt:0];
+        
+        if (self.out_commitment[i] != [NSNull null]) {
+            [d appendVarInt:[self.out_commitment[i] length]];
+            [d appendData:self.out_commitment[i]];
+        } else [d appendVarInt:0];
     }
     
     [d appendUInt32:self.lockTime];
+    [d appendUInt8:self.hasPaymentID];
+    if (self.hasPaymentID != 0)
+        [d appendUInt64:self.paymentID];
+    [d appendUInt32:self.txType];
+    
+    [d appendVarInt:[self.bulletProofs length]];
+    [d appendData:self.bulletProofs];
+    
+    [d appendUInt64:self.nTxFee];
+    [d appendBytes:&_c length:sizeof(_c)];
+    
+    [d appendVarInt:self.S.count];
+    for (NSUInteger i = 0; i < self.S.count; i++) {
+        if (self.S[i] != [NSNull null]) {
+            NSMutableArray *subItem = (NSMutableArray *)self.S[i];
+            [d appendVarInt:subItem.count];
+            for (NSUInteger j = 0; i < subItem.count; j++) {
+                [subItem[j] getValue:&hash];
+                [d appendBytes:&hash length:sizeof(hash)];
+            }
+        } else [d appendVarInt:0];
+    }
+    
+    [d appendVarInt:[self.ntxFeeKeyImage length]];
+    [d appendData:self.ntxFeeKeyImage];
+    
     if (subscriptIndex != NSNotFound) [d appendUInt32:SIGHASH_ALL];
     return d;
 }

@@ -49,14 +49,36 @@ typedef union _UInt256 UInt256;
 @property (nonatomic, readonly) NSArray *inputScripts;
 @property (nonatomic, readonly) NSArray *inputSignatures;
 @property (nonatomic, readonly) NSArray *inputSequences;
+@property (nonatomic, readonly) NSArray *inputEncryptionKey;
+@property (nonatomic, readonly) NSArray *inputKeyImage;
+@property (nonatomic, readonly) NSArray *inputDecoys;
+@property (nonatomic, readonly) NSArray *inputMasternodeStealthAddress;
+@property (nonatomic, readonly) NSArray *inputS;
+@property (nonatomic, readonly) NSArray *inputR;
+
 @property (nonatomic, readonly) NSArray *outputAmounts;
 @property (nonatomic, readonly) NSArray *outputAddresses;
 @property (nonatomic, readonly) NSArray *outputScripts;
+@property (nonatomic, readonly) NSArray *outputTxPriv;
+@property (nonatomic, readonly) NSArray *outputTxPub;
+@property (nonatomic, readonly) NSArray *outputMaskValue;
+@property (nonatomic, readonly) NSArray *outputMasternodeStealthAddress;
+@property (nonatomic, readonly) NSArray *outputCommitment;
 
 @property (nonatomic, assign) BOOL isInstant;
 
 @property (nonatomic, assign) UInt256 txHash;
 @property (nonatomic, assign) uint32_t version;
+
+@property (nonatomic, assign) uint8_t hasPaymentID;
+@property (nonatomic, assign) uint64_t paymentID;
+@property (nonatomic, assign) uint32_t txType;
+@property (nonatomic, strong) NSData *bulletProofs;
+@property (nonatomic, assign) uint64_t nTxFee;
+@property (nonatomic, assign) UInt256 c;
+@property (nonatomic, strong) NSMutableArray *S;
+@property (nonatomic, strong) NSData *ntxFeeKeyImage;
+
 @property (nonatomic, assign) uint32_t lockTime;
 @property (nonatomic, assign) uint32_t blockHeight;
 @property (nonatomic, assign) NSTimeInterval timestamp; // time interval since refrence date, 00:00:00 01/01/01 GMT

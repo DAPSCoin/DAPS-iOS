@@ -102,6 +102,14 @@ inline static int ceil_log2(int x)
     //NSLog(@"Merkle root hash %@",[NSData dataWithUInt256:_merkleRoot].hexString);
     //NSLog(@"Merkle root %@",[NSData dataWithUInt256: *(const UInt256 *)((const char *)[NSData dataWithUInt256:_merkleRoot].reverse.bytes)].hexString);
     off += sizeof(UInt256);
+    if (_version >= 100 /*POA_BLOCK_VERSION_LOW_LIMIT */) {
+        _hashPrevPoABlock = [message hashAtOffset:off];
+        off += sizeof(UInt256);
+        _hashPoAMerkleRoot = [message hashAtOffset:off];
+        off += sizeof(UInt256);
+        _minedHash = [message hashAtOffset:off];
+        off += sizeof(UInt256);
+    }
     _timestamp = [message UInt32AtOffset:off];
     //NSLog(@"Timestamp %d",_timestamp);
     off += sizeof(uint32_t);
@@ -111,13 +119,13 @@ inline static int ceil_log2(int x)
     _nonce = [message UInt32AtOffset:off];
     //NSLog(@"Nonce %d",_nonce);
     off += sizeof(uint32_t);
-    if([ self isZerocoin ]){
-        _zerocoinAccumulator = [message hashAtOffset:off];
-        //NSLog(@"Zerocoin accumulator %@",[NSData dataWithUInt256: *(const UInt256 *)((const char *)[NSData dataWithUInt256:_zerocoinAccumulator].reverse.bytes)].hexString);
-        off += sizeof(UInt256);
-    }else{
+//    if([ self isZerocoin ]){
+//        _zerocoinAccumulator = [message hashAtOffset:off];
+//        //NSLog(@"Zerocoin accumulator %@",[NSData dataWithUInt256: *(const UInt256 *)((const char *)[NSData dataWithUInt256:_zerocoinAccumulator].reverse.bytes)].hexString);
+//        off += sizeof(UInt256);
+//    }else{
         _zerocoinAccumulator = UINT256_ZERO;
-    }
+//    }
     
     _totalTransactions = [message UInt32AtOffset:off];
     //NSLog(@"Total txs %d",_totalTransactions);
@@ -132,16 +140,21 @@ inline static int ceil_log2(int x)
     [d appendUInt32:_version];
     [d appendBytes:&_prevBlock length:sizeof(_prevBlock)];
     [d appendBytes:&_merkleRoot length:sizeof(_merkleRoot)];
+    if (_version >= 100 /*POA_BLOCK_VERSION_LOW_LIMIT */) {
+        [d appendBytes:&_hashPrevPoABlock length:sizeof(_hashPrevPoABlock)];
+        [d appendBytes:&_hashPoAMerkleRoot length:sizeof(_hashPoAMerkleRoot)];
+        [d appendBytes:&_minedHash length:sizeof(_minedHash)];
+    }
     [d appendUInt32:_timestamp];
     [d appendUInt32:_target];
     [d appendUInt32:_nonce];
     
-    if(![ self isZerocoin ]){
-        _blockHash = d.x11;
-    }else{
-        [d appendBytes:&_zerocoinAccumulator length:sizeof(_zerocoinAccumulator)];
+//    if(![ self isZerocoin ]){
+//        _blockHash = d.x11;
+//    }else{
+//        [d appendBytes:&_zerocoinAccumulator length:sizeof(_zerocoinAccumulator)];
         _blockHash = d.SHA256_2;
-    }
+//    }
     
 
     //NSLog(@"Received block hash %@",[NSData dataWithUInt256:_blockHash].hexString);

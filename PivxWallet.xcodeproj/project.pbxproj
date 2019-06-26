@@ -1191,7 +1191,6 @@
 				CEE253DB1E26B3B400A25B15 /* Icon Versioning */,
 				FB0ACB9A1F9A99E400F4AB52 /* ShellScript */,
 				16CF725B5FAE3ED8DFAF6824 /* [CP] Embed Pods Frameworks */,
-				6FC8EBE6517DBF10EAD705F8 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -1435,7 +1434,7 @@
 			files = (
 			);
 			inputPaths = (
-				"${SRCROOT}/Pods/Target Support Files/Pods-pivxwallet/Pods-pivxwallet-frameworks.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-pivxwallet/Pods-pivxwallet-frameworks.sh",
 				"${BUILT_PRODUCTS_DIR}/SlideMenuControllerSwift/SlideMenuControllerSwift.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
@@ -1444,22 +1443,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-pivxwallet/Pods-pivxwallet-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		6FC8EBE6517DBF10EAD705F8 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-pivxwallet/Pods-pivxwallet-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-pivxwallet/Pods-pivxwallet-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		CEE253DB1E26B3B400A25B15 /* Icon Versioning */ = {

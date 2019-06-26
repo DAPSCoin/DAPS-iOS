@@ -41,8 +41,11 @@ typedef union _UInt256 UInt256;
 @property (nonatomic, readonly) uint32_t version;
 @property (nonatomic, readonly) UInt256 prevBlock;
 @property (nonatomic, readonly) UInt256 merkleRoot;
+@property (nonatomic, readonly) UInt256 hashPrevPoABlock;
+@property (nonatomic, readonly) UInt256 hashPoAMerkleRoot;
+@property (nonatomic, readonly) UInt256 minedHash;
 @property (nonatomic, readonly) uint32_t timestamp; // time interval since unix epoch
-@property (nonatomic, readonly) uint32_t target;
+@property (nonatomic, readonly) uint32_t target;        //nBits
 @property (nonatomic, readonly) uint32_t nonce;
 @property (nonatomic, readonly) uint32_t totalTransactions;
 @property (nonatomic, readonly) NSData *hashes;
