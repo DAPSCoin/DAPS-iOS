@@ -25,11 +25,13 @@
 
 #import <Foundation/Foundation.h>
 
-#if DASH_TESTNET
-#define DASH_MAGIC_NUMBER 0xba657645
-#else
-#define DASH_MAGIC_NUMBER 0xe9fdc490
-#endif
+//#if DASH_TESTNET
+//#define DASH_MAGIC_NUMBER 0xba657645
+//#else
+//#define DASH_MAGIC_NUMBER 0xe9fdc490
+//#endif
+
+#define DAPS_MAGIC_NUMBER 0x8479b7a4
 
 CF_IMPLICIT_BRIDGING_ENABLED
 

@@ -55,13 +55,14 @@ int BRSecp256k1PointMul(BRECPoint * _Nonnull p, const UInt256 * _Nonnull i);
 @interface BRKey : NSObject
 
 @property (nullable, nonatomic, readonly) NSString *privateKey;
-@property (nullable, nonatomic, readonly) NSData *publicKey;
-@property (nullable, nonatomic, readonly) NSString *address;
-@property (nonatomic, readonly) UInt160 hash160;
-@property (nonatomic, readonly, nullable) const UInt256 *secretKey;
+@property (nullable, nonatomic, readonly) NSData *publicKey;                        // 65byte publicKey(CPubkey)  len == 33 -> compressed
+@property (nullable, nonatomic, readonly) NSString *address;                        // base58 bitcoin address
+@property (nonatomic, readonly) UInt160 hash160;                                    // hash160 of publickey (CPubkey->GetID())
+@property (nonatomic, readonly, nullable) const UInt256 *secretKey;                 // 32byte privateKey (CKey)
 
 + (nullable instancetype)keyWithPrivateKey:(nonnull NSString *)privateKey;
 + (nullable instancetype)keyWithSecret:(UInt256)secret compressed:(BOOL)compressed;
++ (nullable instancetype)keyWithRandSecret:(BOOL)compressed;
 + (nullable instancetype)keyWithPublicKey:(nonnull NSData *)publicKey;
 + (nullable instancetype)keyRecoveredFromCompactSig:(nonnull NSData *)compactSig andMessageDigest:(UInt256)md;
 

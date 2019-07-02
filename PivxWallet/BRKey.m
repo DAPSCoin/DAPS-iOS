@@ -30,6 +30,8 @@
 #import "NSData+Bitcoin.h"
 #import "NSMutableData+Bitcoin.h"
 
+#include <stdlib.h>
+
 #define USE_BASIC_CONFIG       1
 #define ENABLE_MODULE_RECOVERY 1
 #define DETERMINISTIC          1
@@ -132,6 +134,10 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
     return [[self alloc] initWithCompactSig:compactSig andMessageDigest:md];
 }
 
++ (nullable instancetype)keyWithRandSecret:(BOOL)compressed {
+    return [[self alloc] initWithRandSecret:compressed];
+}
+
 - (instancetype)init
 {
     dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
@@ -145,6 +151,31 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
     _seckey = secret;
     _compressed = compressed;
     return (secp256k1_ec_seckey_verify(_ctx, _seckey.u8)) ? self : nil;
+}
+
+- (instancetype)initWithRandSecret:(BOOL)compressed
+{
+    if (! (self = [self init])) return nil;
+    
+    _seckey = [self createRandSecretKey];
+    _compressed = compressed;
+    return (secp256k1_ec_seckey_verify(_ctx, _seckey.u8)) ? self : nil;
+}
+
+-(UInt256)createRandSecretKey
+{
+    int size = 32;
+    NSMutableData* theData = [NSMutableData secureDataWithCapacity:size];
+    for( unsigned int i = 0 ; i < size/4 ; ++i )
+    {
+        u_int32_t randomBits = arc4random();
+        [theData appendBytes:(void*)&randomBits length:4];
+    }
+    
+    UInt256 value;
+    [theData getBytes:&value length:sizeof(UInt256)];
+    
+    return value;
 }
 
 - (instancetype)initWithPrivateKey:(NSString *)privateKey

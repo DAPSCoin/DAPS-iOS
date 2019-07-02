@@ -53,8 +53,8 @@
 #if DASH_TESTNET
 
 static const struct { uint32_t height; const char *hash; uint32_t timestamp; uint32_t target; } checkpoint_array[] = {
-    {           0, "0000041e482b9b9691d98eefb48473405c0b8ec31b76df3797c74a78680ef818", 1454124731, 0x1e0ffff0u },
-     {   201561, "5d320895adf1c5da8b76d73b2d9af71903e0e894bf1438817fe674cf116bb64c", 1501775867, 0x1b00c86du }
+    {           0, "0000059f433f00d4ed1aa073e7bdd9b358676cc8e2537d371c354256390122b6", 1558521974, 0x1e0ffff0u },
+//     {   201561, "5d320895adf1c5da8b76d73b2d9af71903e0e894bf1438817fe674cf116bb64c", 1501775867, 0x1b00c86du }
 };
 
 static const char *dns_seeds[] = {
@@ -66,24 +66,24 @@ static const char *dns_seeds[] = {
 // blockchain checkpoints - these are also used as starting points for partial chain downloads, so they need to be at
 // difficulty transition boundaries in order to verify the block difficulty at the immediately following transition
 static const struct { uint32_t height; const char *hash; uint32_t timestamp; uint32_t target; } checkpoint_array[] = {
-    {     0, "0000041e482b9b9691d98eefb48473405c0b8ec31b76df3797c74a78680ef818", 1454124731, 0x1e0ffff0u },
-    {259201, "1c9121bf9329a6234bfd1ea2d91515f19cd96990725265253f4b164283ade5dd", 1471401614, 0x1c056dacu },
-    {424998, "f31e381eedb0ed3ed65fcc98cc71f36012bee32e8efd017c4f9fb0620fd35f6b", 1481590494, 0x1a57f411u },
-    {616764, "29dd0bd1c59484f290896687b4ffb6a49afa5c498caf61967c69a541f8191557", 1493231313, 0x1a4d346du },
-    {623933, "c7aafa648a0f1450157dc93bd4d7448913a85b7448f803b4ab970d91fc2a7da7", 1493667067, 0x1a3f78c0u},
-    {791150, "8e76f462e4e82d1bd21cb72e1ce1567d4ddda2390f26074ffd1f5d9c270e5e50", 1503804886, 0x1b009695u},
-    {795000, "4423cceeb9fd574137a18733416275a70fdf95283cc79ad976ca399aa424a443", 1504047699, 0x1a7a548fu},
-    {863787, "5b2482eca24caf2a46bb22e0545db7b7037282733faa3a42ec20542509999a64", 1508214671, 0x1a682047u},
-    {863795, "2ad866818c4866e0d555181daccc628056216c0db431f88a825e84ed4f469067", 1508217664, 0x1b020221u},
-    {863805, "a755bd9a22b63c70d3db474f4b2b61a1f86c835b290a081bb3ec1ba2103eb4cb", 1508219189, 0x1b049119u},
-    {895400, "7796a0274a608fac12d400198174e50beda992c1d522e52e5b95b884bc1beac6", 1510179528, 0x1a75c1eau},
-    {895991, "d53013ed7ea5c325b9696c95e07667d6858f8ff7ee13fecfa90827bf3c9ae316", 1510216596, 0x1b00f83au},
-    {908000, "202708f8c289b676fceb832a079ff6b308a28608339acbf7584de533619d014d", 1510948627, 0x1a74dca4u},
-    {1142400, "98aff9d605bf123247f98b1e3a02567eb5799d208d78ec30fb89737b1c1f79c5", 1525106065, 0x1a4ab81cu},
-    {1679090, "f747ce055ba1b12e1f2e842bd480bc647210799359cb2e553ab292065e3419d6", 1551490853, 0x1b008da5u},
-    {1686229, "bb42bf1e886a7c23474634c90893dd3d68a6ccbfea4ac92a98da5cad0c6a6cb7", 1551924791, 0x1a6b18a8u},
-    {1778954, "0d3241268264a2908d6babf00d9cd1ffb83d93d7bb4e428820127fe227c2029c", 1556529343, 0x1b009528u},
-    {1788528, "ea9243ff8fc079fdd7a04f11fac415de4d98e1bb0dc38db6f79f8f8bbfdbe496", 1556924938, 0x1b00cf96u}
+    {     0, "0000059f433f00d4ed1aa073e7bdd9b358676cc8e2537d371c354256390122b6", 1558521974, 0x1e0ffff0u },
+//    {259201, "1c9121bf9329a6234bfd1ea2d91515f19cd96990725265253f4b164283ade5dd", 1471401614, 0x1c056dacu },
+//    {424998, "f31e381eedb0ed3ed65fcc98cc71f36012bee32e8efd017c4f9fb0620fd35f6b", 1481590494, 0x1a57f411u },
+//    {616764, "29dd0bd1c59484f290896687b4ffb6a49afa5c498caf61967c69a541f8191557", 1493231313, 0x1a4d346du },
+//    {623933, "c7aafa648a0f1450157dc93bd4d7448913a85b7448f803b4ab970d91fc2a7da7", 1493667067, 0x1a3f78c0u},
+//    {791150, "8e76f462e4e82d1bd21cb72e1ce1567d4ddda2390f26074ffd1f5d9c270e5e50", 1503804886, 0x1b009695u},
+//    {795000, "4423cceeb9fd574137a18733416275a70fdf95283cc79ad976ca399aa424a443", 1504047699, 0x1a7a548fu},
+//    {863787, "5b2482eca24caf2a46bb22e0545db7b7037282733faa3a42ec20542509999a64", 1508214671, 0x1a682047u},
+//    {863795, "2ad866818c4866e0d555181daccc628056216c0db431f88a825e84ed4f469067", 1508217664, 0x1b020221u},
+//    {863805, "a755bd9a22b63c70d3db474f4b2b61a1f86c835b290a081bb3ec1ba2103eb4cb", 1508219189, 0x1b049119u},
+//    {895400, "7796a0274a608fac12d400198174e50beda992c1d522e52e5b95b884bc1beac6", 1510179528, 0x1a75c1eau},
+//    {895991, "d53013ed7ea5c325b9696c95e07667d6858f8ff7ee13fecfa90827bf3c9ae316", 1510216596, 0x1b00f83au},
+//    {908000, "202708f8c289b676fceb832a079ff6b308a28608339acbf7584de533619d014d", 1510948627, 0x1a74dca4u},
+//    {1142400, "98aff9d605bf123247f98b1e3a02567eb5799d208d78ec30fb89737b1c1f79c5", 1525106065, 0x1a4ab81cu},
+//    {1679090, "f747ce055ba1b12e1f2e842bd480bc647210799359cb2e553ab292065e3419d6", 1551490853, 0x1b008da5u},
+//    {1686229, "bb42bf1e886a7c23474634c90893dd3d68a6ccbfea4ac92a98da5cad0c6a6cb7", 1551924791, 0x1a6b18a8u},
+//    {1778954, "0d3241268264a2908d6babf00d9cd1ffb83d93d7bb4e428820127fe227c2029c", 1556529343, 0x1b009528u},
+//    {1788528, "ea9243ff8fc079fdd7a04f11fac415de4d98e1bb0dc38db6f79f8f8bbfdbe496", 1556924938, 0x1b00cf96u}
 };
 
 static const char *dns_seeds[] = {
@@ -185,6 +185,7 @@ static const char *dns_seeds[] = {
     if (_fixedPeer) return [NSMutableOrderedSet orderedSetWithObject:_fixedPeer];
     if (_peers.count >= _maxConnectCount) return _peers;
     
+    return nil;
     @synchronized(self) {
         if (_peers.count >= _maxConnectCount) return _peers;
         _peers = [NSMutableOrderedSet orderedSet];
@@ -331,18 +332,19 @@ static const char *dns_seeds[] = {
         _lastBlock = [[BRMerkleBlockEntity fetchObjects:req].lastObject merkleBlock];
         
         // if we don't have any blocks yet, use the latest checkpoint that's at least a week older than earliestKeyTime
-        for (int i = CHECKPOINT_COUNT - 1; ! _lastBlock && i >= 0; i--) {
-            if (i == 0 || checkpoint_array[i].timestamp + 7*24*60*60 < self.earliestKeyTime + NSTimeIntervalSince1970) {
-                UInt256 hash = *(UInt256 *)@(checkpoint_array[i].hash).hexToData.reverse.bytes;
-                _lastBlock = [[BRMerkleBlock alloc] initWithBlockHash:hash version:1 prevBlock:UINT256_ZERO
-                                                           merkleRoot:UINT256_ZERO timestamp:checkpoint_array[i].timestamp
-                                                               target:checkpoint_array[i].target nonce:0
-                                                                zerocoinAccumulator:UINT256_ZERO
-                                                                totalTransactions:0 hashes:nil flags:nil height:checkpoint_array[i].height];
-            }
+//        for (int i = CHECKPOINT_COUNT - 1; ! _lastBlock && i >= 0; i--) {
+//            if (i == 0 || checkpoint_array[i].timestamp + 7*24*60*60 < self.earliestKeyTime + NSTimeIntervalSince1970) {
+//                UInt256 hash = *(UInt256 *)@(checkpoint_array[i].hash).hexToData.reverse.bytes;
+//                _lastBlock = [[BRMerkleBlock alloc] initWithBlockHash:hash version:1 prevBlock:UINT256_ZERO
+//                                                           merkleRoot:UINT256_ZERO timestamp:checkpoint_array[i].timestamp
+//                                                               target:checkpoint_array[i].target nonce:0
+//                                                                zerocoinAccumulator:UINT256_ZERO
+//                                                                totalTransactions:0 hashes:nil flags:nil height:checkpoint_array[i].height];
+//            }
+//        }
+        if (_lastBlock) {
+            if (_lastBlock.height > _estimatedBlockHeight) _estimatedBlockHeight = _lastBlock.height;
         }
-        
-        if (_lastBlock.height > _estimatedBlockHeight) _estimatedBlockHeight = _lastBlock.height;
     }
     
     return _lastBlock;
@@ -424,6 +426,7 @@ static const char *dns_seeds[] = {
                                                              forElementCount:(elemCount < 200 ? 300 : elemCount + 100) tweak:(uint32_t)peer.hash
                                                                        flags:BLOOM_UPDATE_ALL];
     
+#if 0 //TODO-liming
     for (NSString *addr in addresses) {// add addresses to watch for tx receiveing money to the wallet
         NSData *hash = addr.addressToHash160;
         
@@ -439,6 +442,7 @@ static const char *dns_seeds[] = {
     for (d in inputs) { // also add TXOs spent within the last 100 blocks
         if (! [filter containsData:d]) [filter insertData:d];
     }
+#endif
     
     // TODO: XXXX if already synced, recursively add inputs of unconfirmed receives
     _bloomFilter = filter;

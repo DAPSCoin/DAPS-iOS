@@ -63,6 +63,9 @@ typedef struct _BRUTXO {
 // returns the first unused external address
 @property (nonatomic, readonly) NSString * _Nullable receiveAddress;
 
+// returns stealth address
+@property (nonatomic, readonly) NSString * _Nullable receiveStealthAddress;
+
 // returns the first unused internal address
 @property (nonatomic, readonly) NSString * _Nullable changeAddress;
 

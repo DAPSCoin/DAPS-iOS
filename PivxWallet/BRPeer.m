@@ -40,10 +40,10 @@
 #define MAX_MSG_LENGTH     0x02000000
 #define MAX_GETDATA_HASHES 50000
 #define ENABLED_SERVICES   0     // we don't provide full blocks to remote nodes
-#define PROTOCOL_VERSION   70916
-#define MIN_PROTO_VERSION  70916 // peers earlier than this protocol version not supported (need v0.9 txFee relay rules)
+#define PROTOCOL_VERSION   70912
+#define MIN_PROTO_VERSION  70912 // peers earlier than this protocol version not supported (need v0.9 txFee relay rules)
 #define LOCAL_HOST         0x7f000001
-#define CONNECT_TIMEOUT    3.0
+#define CONNECT_TIMEOUT    30.0
 #define MEMPOOL_TIMEOUT    5.0
 
 typedef enum : uint32_t {
@@ -692,7 +692,7 @@ services:(uint64_t)services
         return;
     }
     
-    //NSLog(@"%@:%u got inv with %u items", self.host, self.port, (int)count);
+    NSLog(@"%@:%u got inv with %u items", self.host, self.port, (int)count);
     
     for (NSUInteger off = l.unsignedIntegerValue; off < l.unsignedIntegerValue + 36*count; off += 36) {
         inv_type type = [message UInt32AtOffset:off];
@@ -1040,6 +1040,7 @@ services:(uint64_t)services
     //else NSLog(@"%@:%u got merkleblock %@", self.host, self.port, block.blockHash);
 
     NSMutableOrderedSet *txHashes = [NSMutableOrderedSet orderedSetWithArray:block.txHashes];
+    NSLog(@"%d: txHashCount = %ld",block.height, txHashes.count);
 
     [txHashes minusOrderedSet:self.knownTxHashes];
 
@@ -1174,7 +1175,7 @@ services:(uint64_t)services
                         
                         // consume one byte at a time, up to the magic number that starts a new message header
                         while (self.msgHeader.length >= sizeof(uint32_t) &&
-                               [self.msgHeader UInt32AtOffset:0] != DASH_MAGIC_NUMBER) {
+                               [self.msgHeader UInt32AtOffset:0] != DAPS_MAGIC_NUMBER) {
 #if DEBUG
                             printf("%c", *(const char *)self.msgHeader.bytes);
 #endif

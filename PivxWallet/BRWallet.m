@@ -63,6 +63,8 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 @property (nonatomic, strong) SeedRequestBlock seed;
 @property (nonatomic, strong) NSManagedObjectContext *moc;
 
+@property (nonatomic, strong) BRKey *viewKey, *spendKey;
+
 @end
 
 @implementation BRWallet
@@ -87,6 +89,8 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     self.externalBIP44Addresses = [NSMutableArray array];
     self.allAddresses = [NSMutableSet set];
     self.usedAddresses = [NSMutableSet set];
+    self.viewKey = nil;
+    self.spendKey = nil;
     
     [self.moc performBlockAndWait:^{
         [BRAddressEntity setContext:self.moc];
@@ -95,12 +99,44 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         
         for (BRAddressEntity *e in [BRAddressEntity allObjects]) {
             @autoreleasepool {
+                if (e.purpose == 1) { //viewkey
+                    self.viewKey = [BRKey keyWithPrivateKey:e.address];
+                    continue;
+                }
+                
+                if (e.purpose == 2) { //spendkey
+                    self.spendKey = [BRKey keyWithPrivateKey:e.address];
+                    continue;
+                }
+                
                 NSMutableArray *a = (e.purpose == 44)?((e.internal) ? self.internalBIP44Addresses : self.externalBIP44Addresses) : ((e.internal) ? self.internalBIP32Addresses : self.externalBIP32Addresses);
                 
                 while (e.index >= a.count) [a addObject:[NSNull null]];
                 a[e.index] = e.address;
                 [self.allAddresses addObject:e.address];
             }
+        }
+        
+        if (self.viewKey == nil) {
+            self.viewKey = [BRKey keyWithRandSecret:YES];
+            
+            BRAddressEntity *e = [BRAddressEntity managedObject];
+            e.purpose = 1;
+            e.account = 0;
+            e.address = self.viewKey.privateKey;
+            e.index = 0;
+            e.internal = NO;
+        }
+        
+        if (self.spendKey == nil) {
+            self.spendKey = [BRKey keyWithRandSecret:YES];
+            
+            BRAddressEntity *e = [BRAddressEntity managedObject];
+            e.purpose = 2;
+            e.account = 0;
+            e.address = self.spendKey.privateKey;
+            e.index = 0;
+            e.internal = NO;
         }
         
         for (BRTxMetadataEntity *e in [BRTxMetadataEntity allObjects]) {
@@ -442,6 +478,50 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     NSString *addr = [self addressesWithGapLimit:1 internal:NO].lastObject;
     return (addr) ? addr : self.externalBIP44Addresses.lastObject;
 #endif
+}
+
+- (NSString *)receiveStealthAddress
+{
+    int size = 71;      //71bytes stealth address
+    NSMutableData *d = [NSMutableData secureDataWithCapacity:size];
+    
+    [d appendUInt8:18];
+    [d appendBytes:self.spendKey.publicKey.bytes length:33];
+    [d appendBytes:self.viewKey.publicKey.bytes length:33];
+    UInt256 h = d.SHA256_2;
+    
+    [d appendBytes:h.u8 length:4];
+    
+    NSString *result = @"";
+    NSMutableData *inputData = nil;
+    NSString *base58;
+    for (int i = 1; i < 9; i++) {
+        UInt64 input8;
+        [d getBytes:&input8 range:NSMakeRange(8 * (i - 1), 8)];
+        
+        inputData = [NSMutableData dataWithBytes:&input8 length:8];
+        base58 = inputData.base58String;
+        if (base58.length < 11) {
+            int diff = 11 - base58.length;
+            for (int j = 0; j < diff; j++)
+                base58 = [@"1" stringByAppendingString:base58];
+        }
+            
+        result = [result stringByAppendingString:base58];
+    }
+    
+    UInt8 input7[7];
+    [d getBytes:input7 range:NSMakeRange(64, 7)];
+    inputData = [NSMutableData dataWithBytes:input7 length:7];
+    base58 = inputData.base58String;
+    if (base58.length < 11) {
+        int diff = 11 - base58.length;
+        for (int j = 0; j < diff; j++)
+            base58 = [@"1" stringByAppendingString:base58];
+    }
+    result = [result stringByAppendingString:base58];
+    
+    return result;
 }
 
 // returns the first unused internal address

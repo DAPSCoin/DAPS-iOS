@@ -459,6 +459,7 @@
 		BAE12BEA1B2DEE7F00895CC5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BAE12C041B2DEEF700895CC5 /* BRTodayViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BRTodayViewController.h; sourceTree = "<group>"; };
 		BAE12C051B2DEEF700895CC5 /* BRTodayViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BRTodayViewController.m; sourceTree = "<group>"; };
+		E34725F322C41CEC0050348A /* PIVX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = PIVX.entitlements; path = pivxwallet/PIVX.entitlements; sourceTree = "<group>"; };
 		F3767C71363A17C2937E2034 /* Pods-pivxwallet.testnet.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-pivxwallet.testnet.xcconfig"; path = "Pods/Target Support Files/Pods-pivxwallet/Pods-pivxwallet.testnet.xcconfig"; sourceTree = "<group>"; };
 		FB021E4D1E42EB5F00D17638 /* NSAttributedString+Attachments.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSAttributedString+Attachments.h"; sourceTree = "<group>"; };
 		FB021E4E1E42EB5F00D17638 /* NSAttributedString+Attachments.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSAttributedString+Attachments.m"; sourceTree = "<group>"; };
@@ -893,6 +894,7 @@
 		75D5F3B5191EC270004AB296 = {
 			isa = PBXGroup;
 			children = (
+				E34725F322C41CEC0050348A /* PIVX.entitlements */,
 				75D5F3C7191EC270004AB296 /* PivxWallet */,
 				BAE12BE81B2DEE7F00895CC5 /* TodayExtension */,
 				75D5F3EC191EC270004AB296 /* DashWalletTests */,
@@ -1293,9 +1295,10 @@
 					};
 					75D5F3BD191EC270004AB296 = {
 						LastSwiftMigration = 0910;
+						ProvisioningStyle = Manual;
 						SystemCapabilities = {
 							com.apple.ApplicationGroups.iOS = {
-								enabled = 1;
+								enabled = 0;
 							};
 							com.apple.BackgroundModes = {
 								enabled = 1;
@@ -1304,7 +1307,7 @@
 								enabled = 0;
 							};
 							com.apple.Push = {
-								enabled = 1;
+								enabled = 0;
 							};
 						};
 					};
@@ -1336,6 +1339,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 				Base,
 				es,
@@ -1894,8 +1898,9 @@
 				BUNDLE_ID_SUFFIX = "";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_WARN_COMMA = NO;
-				CODE_SIGN_ENTITLEMENTS = pivxwallet/pivxwallet.entitlements;
-				DEVELOPMENT_TEAM = 99K9TZS9X5;
+				CODE_SIGN_IDENTITY = "iPhone Developer: Jeff Lee (A676BC532X)";
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = D4J7AW2S69;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "PivxWallet/PivxWallet-Prefix.pch";
@@ -1912,6 +1917,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = camera.furszy.pivxwallet;
 				PRODUCT_MODULE_NAME = pivxwallet;
 				PRODUCT_NAME = PIVX;
+				PROVISIONING_PROFILE_SPECIFIER = All_Dev_160129;
 				SWIFT_OBJC_BRIDGING_HEADER = "PivxWallet/pivxwallet-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_SWIFT3_OBJC_INFERENCE = On;
@@ -1930,8 +1936,9 @@
 				BUNDLE_ID_SUFFIX = "";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_WARN_COMMA = NO;
-				CODE_SIGN_ENTITLEMENTS = pivxwallet/pivxwallet.entitlements;
-				DEVELOPMENT_TEAM = 99K9TZS9X5;
+				CODE_SIGN_IDENTITY = "iPhone Developer: Jeff Lee (A676BC532X)";
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = D4J7AW2S69;
 				ENABLE_TESTABILITY = NO;
 				GCC_OPTIMIZATION_LEVEL = s;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -1948,6 +1955,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = camera.furszy.pivxwallet;
 				PRODUCT_MODULE_NAME = pivxwallet;
 				PRODUCT_NAME = PIVX;
+				PROVISIONING_PROFILE_SPECIFIER = All_Dev_160129;
 				SWIFT_OBJC_BRIDGING_HEADER = "PivxWallet/pivxwallet-Bridging-Header.h";
 				SWIFT_SWIFT3_OBJC_INFERENCE = On;
 				SWIFT_VERSION = 4.0;
@@ -2212,8 +2220,9 @@
 				BUNDLE_ID_SUFFIX = "";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_WARN_COMMA = NO;
-				CODE_SIGN_ENTITLEMENTS = pivxwallet/pivxwallet.entitlements;
-				DEVELOPMENT_TEAM = 99K9TZS9X5;
+				CODE_SIGN_IDENTITY = "iPhone Developer: Jeff Lee (A676BC532X)";
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = D4J7AW2S69;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "PivxWallet/PivxWallet-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "TESTFLIGHT=1";
@@ -2230,6 +2239,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = camera.furszy.pivxwallet;
 				PRODUCT_MODULE_NAME = pivxwallet;
 				PRODUCT_NAME = PIVX;
+				PROVISIONING_PROFILE_SPECIFIER = All_Dev_160129;
 				SWIFT_OBJC_BRIDGING_HEADER = "PivxWallet/pivxwallet-Bridging-Header.h";
 				SWIFT_SWIFT3_OBJC_INFERENCE = On;
 				SWIFT_VERSION = 4.0;
@@ -2426,8 +2436,9 @@
 				BUNDLE_ID_SUFFIX = .testnet;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_WARN_COMMA = NO;
-				CODE_SIGN_ENTITLEMENTS = pivxwallet/pivxwallet.entitlements;
-				DEVELOPMENT_TEAM = 99K9TZS9X5;
+				CODE_SIGN_IDENTITY = "iPhone Developer: Jeff Lee (A676BC532X)";
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = D4J7AW2S69;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "PivxWallet/PivxWallet-Prefix.pch";
@@ -2449,6 +2460,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = camera.furszy.pivxwallet;
 				PRODUCT_MODULE_NAME = pivxwallet;
 				PRODUCT_NAME = "PIVX-Testnet";
+				PROVISIONING_PROFILE_SPECIFIER = All_Dev_160129;
 				SWIFT_OBJC_BRIDGING_HEADER = "PivxWallet/pivxwallet-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_SWIFT3_OBJC_INFERENCE = On;

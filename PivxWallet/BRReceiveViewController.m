@@ -234,7 +234,7 @@
 - (NSString *)paymentAddress
 {
     if (_paymentRequest) return _paymentRequest.paymentAddress;
-    return [BRWalletManager sharedInstance].wallet.receiveAddress;
+    return [BRWalletManager sharedInstance].wallet.receiveStealthAddress;
 }
 
 - (BOOL)nextTip

@@ -29,7 +29,7 @@
 #import "NSData+Dash.h"
 
 #define MAX_TIME_DRIFT    (2*60*60)     // the furthest in the future a block is allowed to be timestamped
-#define MAX_PROOF_OF_WORK 0x1e0fffffu   // highest value for difficulty target (higher values are less difficult)
+#define MAX_PROOF_OF_WORK 0x1e0ffff0u   // highest value for difficulty target (higher values are less difficult)
 
 // from https://en.bitcoin.it/wiki/Protocol_specification#Merkle_Trees
 // Merkle trees are binary trees of hashes. Merkle trees in bitcoin use a double SHA-256, the SHA-256 hash of the
@@ -93,14 +93,14 @@ inline static int ceil_log2(int x)
     _version = [message UInt32AtOffset:off];
     off += sizeof(uint32_t);
     _prevBlock = [message hashAtOffset:off];
-    //_prevBlock = *(const UInt256 *)((const char *)[NSData dataWithUInt256:_prevBlock].reverse.bytes);
-    //NSLog(@"Prev block hash %@",[NSData dataWithUInt256:_prevBlock].hexString);
-    //NSLog(@"Prev block hash %@",[NSData dataWithUInt256: *(const UInt256 *)((const char *)[NSData dataWithUInt256:_prevBlock].reverse.bytes)].hexString);
+//    _prevBlock = *(const UInt256 *)((const char *)[NSData dataWithUInt256:_prevBlock].reverse.bytes);
+//    NSLog(@"Prev block hash %@",[NSData dataWithUInt256:_prevBlock].hexString);
+//    NSLog(@"Prev block hash %@",[NSData dataWithUInt256: *(const UInt256 *)((const char *)[NSData dataWithUInt256:_prevBlock].reverse.bytes)].hexString);
     off += sizeof(UInt256);
     _merkleRoot = [message hashAtOffset:off];
-    //_merkleRoot = *(const UInt256 *)((const char *)[NSData dataWithUInt256:_merkleRoot].reverse.bytes);
-    //NSLog(@"Merkle root hash %@",[NSData dataWithUInt256:_merkleRoot].hexString);
-    //NSLog(@"Merkle root %@",[NSData dataWithUInt256: *(const UInt256 *)((const char *)[NSData dataWithUInt256:_merkleRoot].reverse.bytes)].hexString);
+//    _merkleRoot = *(const UInt256 *)((const char *)[NSData dataWithUInt256:_merkleRoot].reverse.bytes);
+//    NSLog(@"Merkle root hash %@",[NSData dataWithUInt256:_merkleRoot].hexString);
+//    NSLog(@"Merkle root %@",[NSData dataWithUInt256: *(const UInt256 *)((const char *)[NSData dataWithUInt256:_merkleRoot].reverse.bytes)].hexString);
     off += sizeof(UInt256);
     if (_version >= 100 /*POA_BLOCK_VERSION_LOW_LIMIT */) {
         _hashPrevPoABlock = [message hashAtOffset:off];
@@ -111,13 +111,13 @@ inline static int ceil_log2(int x)
         off += sizeof(UInt256);
     }
     _timestamp = [message UInt32AtOffset:off];
-    //NSLog(@"Timestamp %d",_timestamp);
+//    NSLog(@"Timestamp %d",_timestamp);
     off += sizeof(uint32_t);
     _target = [message UInt32AtOffset:off];
-    //NSLog(@"Bits %d",_target);
+//    NSLog(@"Bits %d",_target);
     off += sizeof(uint32_t);
     _nonce = [message UInt32AtOffset:off];
-    //NSLog(@"Nonce %d",_nonce);
+//    NSLog(@"Nonce %d",_nonce);
     off += sizeof(uint32_t);
 //    if([ self isZerocoin ]){
 //        _zerocoinAccumulator = [message hashAtOffset:off];
@@ -128,13 +128,14 @@ inline static int ceil_log2(int x)
 //    }
     
     _totalTransactions = [message UInt32AtOffset:off];
-    //NSLog(@"Total txs %d",_totalTransactions);
+//    NSLog(@"Total txs %d",_totalTransactions);
     off += sizeof(uint32_t);
     len = (NSUInteger)[message varIntAtOffset:off length:&l]*sizeof(UInt256);
     off += l.unsignedIntegerValue;
     _hashes = (off + len > message.length) ? nil : [message subdataWithRange:NSMakeRange(off, len)];
     off += len;
     _flags = [message dataAtOffset:off length:&l];
+    off += l.unsignedIntegerValue;
     _height = BLOCK_UNKNOWN_HEIGHT;
     
     [d appendUInt32:_version];
@@ -150,10 +151,10 @@ inline static int ceil_log2(int x)
     [d appendUInt32:_nonce];
     
 //    if(![ self isZerocoin ]){
-//        _blockHash = d.x11;
+        _blockHash = d.x11;
 //    }else{
 //        [d appendBytes:&_zerocoinAccumulator length:sizeof(_zerocoinAccumulator)];
-        _blockHash = d.SHA256_2;
+//        _blockHash = d.SHA256_2;
 //    }
     
 
@@ -194,8 +195,8 @@ totalTransactions:(uint32_t)totalTransactions hashes:(NSData *)hashes flags:(NSD
 {
     // target is in "compact" format, where the most significant byte is the size of resulting value in bytes, the next
     // bit is the sign, and the remaining 23bits is the value after having been right shifted by (size - 3)*8 bits
-    static const uint32_t maxsize = MAX_PROOF_OF_WORK >> 24, maxtarget = MAX_PROOF_OF_WORK & 0x00ffffffu;
-    const uint32_t size = _target >> 24, target = _target & 0x00ffffffu;
+    static const uint32_t maxsize = MAX_PROOF_OF_WORK >> 24, maxtarget = MAX_PROOF_OF_WORK & 0x007fffffu;
+    const uint32_t size = _target >> 24, target = _target & 0x007fffffu;
     NSMutableData *d = [NSMutableData data];
     UInt256 merkleRoot, t = UINT256_ZERO;
     int hashIdx = 0, flagIdx = 0;
@@ -225,10 +226,10 @@ totalTransactions:(uint32_t)totalTransactions hashes:(NSData *)hashes flags:(NSD
     }
     
     // check if proof-of-work target is out of range
-    if (target == 0 || target & 0x00800000u || size > maxsize || (size == maxsize && target > maxtarget)){
-        NSLog(@"Error on Check if proof-of-work target is out of range on block: %@",[NSData dataWithUInt256:_blockHash].hexString);
-        return NO;
-    }
+//    if (target == 0 || target & 0x00800000u || size > maxsize || (size == maxsize && target > maxtarget)){
+//        NSLog(@"Error on Check if proof-of-work target is out of range on block: %@",[NSData dataWithUInt256:_blockHash].hexString);
+//        return NO;
+//    }
 
     if (size > 3) *(uint32_t *)&t.u8[size - 3] = CFSwapInt32HostToLittle(target);
     else t.u32[0] = CFSwapInt32HostToLittle(target >> (3 - size)*8);
