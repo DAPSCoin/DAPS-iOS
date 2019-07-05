@@ -325,12 +325,12 @@ static const char *dns_seeds[] = {
 {
     if (! _lastBlock) {
         NSFetchRequest *req = [BRMerkleBlockEntity fetchReq];
-        
+
         req.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"height" ascending:NO]];
         req.predicate = [NSPredicate predicateWithFormat:@"height >= 0 && height != %d", BLOCK_UNKNOWN_HEIGHT];
         req.fetchLimit = 1;
         _lastBlock = [[BRMerkleBlockEntity fetchObjects:req].lastObject merkleBlock];
-        
+
         // if we don't have any blocks yet, use the latest checkpoint that's at least a week older than earliestKeyTime
 //        for (int i = CHECKPOINT_COUNT - 1; ! _lastBlock && i >= 0; i--) {
 //            if (i == 0 || checkpoint_array[i].timestamp + 7*24*60*60 < self.earliestKeyTime + NSTimeIntervalSince1970) {
@@ -426,12 +426,14 @@ static const char *dns_seeds[] = {
                                                              forElementCount:(elemCount < 200 ? 300 : elemCount + 100) tweak:(uint32_t)peer.hash
                                                                        flags:BLOOM_UPDATE_ALL];
     
-#if 0 //TODO-liming
-    for (NSString *addr in addresses) {// add addresses to watch for tx receiveing money to the wallet
-        NSData *hash = addr.addressToHash160;
-        
-        if (hash && ! [filter containsData:hash]) [filter insertData:hash];
-    }
+
+//    for (NSString *addr in addresses) {// add addresses to watch for tx receiveing money to the wallet
+//        NSData *hash = addr.addressToHash160;
+//
+//        if (hash && ! [filter containsData:hash]) [filter insertData:hash];
+//    }
+    
+//    NSData *hash = manager.wallet.receiveStealthAddress.addressToHash160
     
     for (NSValue *utxo in manager.wallet.unspentOutputs) { // add UTXOs to watch for tx sending money from the wallet
         [utxo getValue:&o];
@@ -442,7 +444,6 @@ static const char *dns_seeds[] = {
     for (d in inputs) { // also add TXOs spent within the last 100 blocks
         if (! [filter containsData:d]) [filter insertData:d];
     }
-#endif
     
     // TODO: XXXX if already synced, recursively add inputs of unconfirmed receives
     _bloomFilter = filter;
@@ -1215,14 +1216,15 @@ static const char *dns_seeds[] = {
     *externalBIP32 = [manager.wallet addressesBIP32NoPurposeWithGapLimit:SEQUENCE_GAP_LIMIT_EXTERNAL internal:NO],
     *internalBIP32 = [manager.wallet addressesBIP32NoPurposeWithGapLimit:SEQUENCE_GAP_LIMIT_INTERNAL internal:YES];
     
-    for (NSString *address in [[[external arrayByAddingObjectsFromArray:internal] arrayByAddingObjectsFromArray:externalBIP32] arrayByAddingObjectsFromArray:internalBIP32]) {
-        NSData *hash = address.addressToHash160;
-        
-        if (! hash || [_bloomFilter containsData:hash]) continue;
-        _bloomFilter = nil; // reset bloom filter so it's recreated with new wallet addresses
-        [self updateFilter];
-        break;
-    }
+// ToDo check this parts
+//    for (NSString *address in [[[external arrayByAddingObjectsFromArray:internal] arrayByAddingObjectsFromArray:externalBIP32] arrayByAddingObjectsFromArray:internalBIP32]) {
+//        NSData *hash = address.addressToHash160;
+//
+//        if (! hash || [_bloomFilter containsData:hash]) continue;
+//        _bloomFilter = nil; // reset bloom filter so it's recreated with new wallet addresses
+//        [self updateFilter];
+//        break;
+//    }
 }
 
 - (void)peer:(BRPeer *)peer hasTransaction:(UInt256)txHash

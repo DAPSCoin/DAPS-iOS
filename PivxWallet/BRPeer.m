@@ -352,7 +352,8 @@ services:(uint64_t)services
 - (void)sendFilterloadMessage:(NSData *)filter
 {
     self.sentFilter = YES;
-    [self sendMessage:filter type:MSG_FILTERLOAD];
+//    [self sendMessage:filter type:MSG_FILTERLOAD];
+    [self sendMessage:filter type:MSG_FILTERCLEAR];
 }
 
 - (void)mempoolTimeout
@@ -545,13 +546,18 @@ services:(uint64_t)services
 
 - (void)acceptMessage:(NSData *)message type:(NSString *)type
 {
-    if (self.currentBlock && (! ([MSG_TX isEqual:type] || [MSG_IX isEqual:type] ))) { // if we receive a non-tx message, merkleblock is done
+    if ([@"mnvs" isEqual:type] || [@"mnget" isEqual:type] || [@"getsporks" isEqual:type] || [@"dseg" isEqual:type]) {
+#if DROP_MESSAGE_LOGGING
+        NSLog(@"%@:%u dropping %@, len:%u, not implemented", self.host, self.port, type, (int)message.length);
+#endif
+    }
+    else if (self.currentBlock && (! ([MSG_TX isEqual:type] || [MSG_IX isEqual:type] ))) { // if we receive a non-tx message, merkleblock is done
         UInt256 hash = self.currentBlock.blockHash;
         
-        self.currentBlock = nil;
-        self.currentBlockTxHashes = nil;
         [self error:@"incomplete merkleblock %@, expected %u more tx, got %@",
          uint256_obj(hash), (int)self.currentBlockTxHashes.count, type];
+        self.currentBlock = nil;
+        self.currentBlockTxHashes = nil;
     }
     else if ([MSG_VERSION isEqual:type]) [self acceptVersionMessage:message];
     else if ([MSG_VERACK isEqual:type]) [self acceptVerackMessage:message];

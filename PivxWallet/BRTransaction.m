@@ -634,7 +634,7 @@ sequence:(uint32_t)sequence
         if (self.S[i] != [NSNull null]) {
             NSMutableArray *subItem = (NSMutableArray *)self.S[i];
             [d appendVarInt:subItem.count];
-            for (NSUInteger j = 0; i < subItem.count; j++) {
+            for (NSUInteger j = 0; j < subItem.count; j++) {
                 [subItem[j] getValue:&hash];
                 [d appendBytes:&hash length:sizeof(hash)];
             }
@@ -797,4 +797,50 @@ sequence:(uint32_t)sequence
     return nil;
 }
 
+- (BOOL)isCoinBase {
+    if (self.hashes.count != 1)
+        return NO;
+
+    UInt256 hash;
+    [self.hashes[0] getValue:&hash];
+    
+    for (int i = 0; i < 32; i++) {
+        if (hash.u8[i] != 0)
+            return NO;
+    }
+    
+    return YES;
+}
+
+- (BOOL)isCoinStake {
+    if (self.hashes.count == 0)
+        return NO;
+    
+    UInt256 hash;
+    [self.hashes[0] getValue:&hash];
+    
+    BOOL ret = NO;
+    for (int i = 0; i < 32; i++) {
+        if (hash.u8[i] != 0) {
+            ret = YES;
+            break;
+        }
+    }
+    if (!ret)
+        return NO;
+    
+    if (self.in_decoys.count != 0)
+        return NO;
+    
+    if (self.amounts.count < 2)
+        return NO;
+    
+    if ([self.amounts[0] unsignedLongLongValue] != 0)
+        return NO;
+    
+    if (self.outScripts[0] != [NSNull null] && [self.outScripts[0] length] > 0)
+        return NO;
+    
+    return YES;
+}
 @end

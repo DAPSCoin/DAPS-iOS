@@ -53,6 +53,7 @@ typedef struct _BRUTXO {
     CFSwapInt32HostToLittle((uint32_t)o.n) }) length:sizeof(UInt256) + sizeof(uint32_t)]
 
 @class BRTransaction;
+@class BRKey;
 @protocol BRKeySequence;
 
 @interface BRWallet : NSObject
@@ -77,6 +78,12 @@ typedef struct _BRUTXO {
 
 // NSValue objects containing UTXO structs
 @property (nonatomic, readonly) NSArray * _Nonnull unspentOutputs;
+
+// amount reveal value
+@property (nonatomic, readonly) NSDictionary * _Nonnull amountMap;
+
+// key value
+@property (nonatomic, readonly) NSDictionary * _Nonnull blindMap;
 
 // latest 100 transactions sorted by date, most recent first
 @property (nonatomic, readonly) NSArray * _Nonnull recentTransactions;
@@ -155,6 +162,14 @@ typedef struct _BRUTXO {
 
 // true if no previous wallet transaction spends any of the given transaction's inputs, and no inputs are invalid
 - (BOOL)transactionIsValid:(BRTransaction * _Nonnull)transaction;
+
+// true if the transaction is to me
+- (BOOL)IsTransactionForMe:(BRTransaction * _Nonnull)transaction;
+- (BOOL)RevealTxOutAmount:(BRTransaction *)transaction :(NSUInteger)outIndex :(UInt64 *)amount :(BRKey *)blind;
+- (BOOL)ComputeSharedSec:(BRTransaction *)transaction :(NSUInteger)outIndex :(NSMutableData **)sharedSec;
+- (void)ECDHInfo_Decode:(unsigned char*)encodedMask :(unsigned char*)encodedAmount :(NSData *)sharedSec :(UInt256 *)decodedMask :(UInt64 *)decodedAmount;
+- (void)ECDHInfo_ComputeSharedSec:(const UInt256*)priv :(NSData*)pubKey :(NSMutableData**)sharedSec;
+- (void)ecdhDecode:(unsigned char *)masked :(unsigned char *)amount :(NSData *)sharedSec;
 
 // true if transaction cannot be immediately spent (i.e. if it or an input tx can be replaced-by-fee, via BIP125)
 - (BOOL)transactionIsPending:(BRTransaction * _Nonnull)transaction;

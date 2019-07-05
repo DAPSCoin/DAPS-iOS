@@ -235,6 +235,34 @@ CFAllocatorRef SecureAllocator()
     }
 }
 
+- (void)appendScriptPubKey:(NSData *)pubKey
+{
+    [self appendScriptPushData:pubKey];
+    [self appendUInt8:OP_CHECKSIG];
+}
+
+- (void)appendPubKey:(NSData *)script
+{
+    if (script == (id)[NSNull null]) return;
+    
+    NSArray *elem = [script scriptElements];
+    NSUInteger l = elem.count;
+    
+    if (l == 5 && [elem[0] intValue] == OP_DUP && [elem[1] intValue] == OP_HASH160 && [elem[2] intValue] == 20 &&
+        [elem[3] intValue] == OP_EQUALVERIFY && [elem[4] intValue] == OP_CHECKSIG) {
+        // pay-to-pubkey-hash scriptPubKey
+        [self appendData:elem[2]];
+    }
+    else if (l == 3 && [elem[0] intValue] == OP_HASH160 && [elem[1] intValue] == 20 && [elem[2] intValue] == OP_EQUAL) {
+        // pay-to-script-hash scriptPubKey
+        [self appendData:elem[1]];
+    }
+    else if (l == 2 && ([elem[0] intValue] == 65 || [elem[0] intValue] == 33) && [elem[1] intValue] == OP_CHECKSIG) {
+        // pay-to-pubkey scriptPubKey
+        [self appendData:elem[0]];
+    }
+}
+
 - (void)appendShapeshiftMemoForAddress:(NSString *)address
 {
     static uint8_t pubkeyAddress = BITCOIN_PUBKEY_ADDRESS, scriptAddress = BITCOIN_SCRIPT_ADDRESS;

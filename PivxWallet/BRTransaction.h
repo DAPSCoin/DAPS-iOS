@@ -41,6 +41,16 @@
 
 typedef union _UInt256 UInt256;
 
+
+enum {
+    TX_TYPE_FULL  =  0, //used for any normal transaction
+                        //transaction with no hidden amount (used for collateral transaction, rewarding transaction
+                        // (for masternode and staking node), and PoA mining rew)
+    TX_TYPE_REVEAL_AMOUNT,
+    TX_TYPE_REVEAL_SENDER,    //transaction with no ring signature (used for decollateral transaction + reward transaction
+    TX_TYPE_REVEAL_BOTH         //this is a staking transaction that consumes a staking coin and rewards the staking node and masternode
+};
+
 @interface BRTransaction : NSObject
 
 @property (nonatomic, readonly) NSArray *inputAddresses;
@@ -107,6 +117,8 @@ sequence:(uint32_t)sequence;
 - (void)setInputAddress:(NSString *)address atIndex:(NSUInteger)index;
 - (void)shuffleOutputOrder;
 - (BOOL)signWithPrivateKeys:(NSArray *)privateKeys;
+- (BOOL)isCoinBase;
+- (BOOL)isCoinStake;
 
 - (NSString*)shapeshiftOutboundAddress;
 - (NSString*)shapeshiftOutboundAddressForceScript;

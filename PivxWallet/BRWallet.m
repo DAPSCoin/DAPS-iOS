@@ -52,7 +52,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 
 @property (nonatomic, strong) id<BRKeySequence> sequence;
 @property (nonatomic, strong) NSData *masterPublicKey,*masterBIP32PublicKey;
-@property (nonatomic, strong) NSMutableArray *internalBIP44Addresses,*internalBIP32Addresses, *externalBIP44Addresses,*externalBIP32Addresses;
+@property (nonatomic, strong) NSMutableArray *internalBIP44Addresses,*internalBIP32Addresses, *externalBIP44Addresses,*externalBIP32Addresses, *allKeys;
 @property (nonatomic, strong) NSMutableSet *allAddresses, *usedAddresses;
 @property (nonatomic, strong) NSSet *spentOutputs, *invalidTx, *pendingTx;
 @property (nonatomic, strong) NSMutableOrderedSet *transactions;
@@ -62,6 +62,8 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 @property (nonatomic, assign) uint32_t bestBlockHeight;
 @property (nonatomic, strong) SeedRequestBlock seed;
 @property (nonatomic, strong) NSManagedObjectContext *moc;
+@property (nonatomic, strong) NSMutableDictionary *amountMaps;
+@property (nonatomic, strong) NSMutableDictionary *blindMaps;
 
 @property (nonatomic, strong) BRKey *viewKey, *spendKey;
 
@@ -88,7 +90,10 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     self.externalBIP32Addresses = [NSMutableArray array];
     self.externalBIP44Addresses = [NSMutableArray array];
     self.allAddresses = [NSMutableSet set];
+    self.allKeys = [NSMutableArray array];
     self.usedAddresses = [NSMutableSet set];
+    self.amountMaps = [NSMutableDictionary dictionary];
+    self.blindMaps = [NSMutableDictionary dictionary];
     self.viewKey = nil;
     self.spendKey = nil;
     
@@ -106,6 +111,11 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                 
                 if (e.purpose == 2) { //spendkey
                     self.spendKey = [BRKey keyWithPrivateKey:e.address];
+                    continue;
+                }
+                
+                if (e.purpose == 3) { //spendable key
+                    [self.allKeys addObject:[BRKey keyWithPrivateKey:e.address]];
                     continue;
                 }
                 
@@ -553,6 +563,14 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     return self.utxos.array;
 }
 
+- (NSDictionary *)amountMap {
+    return self.amountMaps;
+}
+
+- (NSDictionary *)blindMap {
+    return self.blindMaps;
+}
+
 // last 100 transactions sorted by date, most recent first
 - (NSArray *)recentTransactions
 {
@@ -780,7 +798,13 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 // true if the given transaction is associated with the wallet (even if it hasn't been registered), false otherwise
 - (BOOL)containsTransaction:(BRTransaction *)transaction
 {
+    NSValue *hash = [NSValue valueWithUInt256:transaction.txHash];
+    if (self.allTx[hash])
+        return YES;
+    
     if ([[NSSet setWithArray:transaction.outputAddresses] intersectsSet:self.allAddresses]) return YES;
+    if ([self IsTransactionForMe:transaction])
+        return YES;
     
     NSInteger i = 0;
     
@@ -789,6 +813,8 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         uint32_t n = [transaction.inputIndexes[i++] unsignedIntValue];
         
         if (n < tx.outputAddresses.count && [self containsAddress:tx.outputAddresses[n]]) return YES;
+        if ([self IsTransactionForMe:tx])
+            return YES;
     }
     
     return NO;
@@ -900,6 +926,190 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     }
     
     return YES;
+}
+
+- (void)ecdhDecode:(unsigned char *)masked :(unsigned char *)amount :(NSData *)sharedSec {
+    UInt256 sharedSec1 = sharedSec.SHA256_2;
+    NSMutableData *sharedSec1_Data = [NSMutableData dataWithBytes:&sharedSec1 length:32];
+    UInt256 sharedSec2 = sharedSec1_Data.SHA256_2;
+    
+    for (int i = 0;i < 32; i++) {
+        masked[i] ^= *(sharedSec1.u8 + i);
+    }
+
+    unsigned char temp[32];
+    memcpy(temp, amount, 32);
+    memset(amount, 0, 8);
+    for (int i = 0; i < 32; i++) {
+        amount[i] = temp[i % 8] ^ *(sharedSec2.u8 + i);
+    }
+}
+
+- (void)ECDHInfo_Decode:(unsigned char*)encodedMask :(unsigned char*)encodedAmount :(NSData *)sharedSec :(UInt256 *)decodedMask :(UInt64 *)decodedAmount {
+    unsigned char tempAmount[32], tempDecoded[32];
+    memcpy(tempDecoded, encodedMask, 32);
+    memcpy(tempAmount, encodedAmount, 32);
+    [self ecdhDecode:tempDecoded :tempAmount :sharedSec];
+    memcpy(decodedAmount, tempAmount, 8);
+    memcpy(decodedMask, tempDecoded, 32);
+}
+
+- (void)ECDHInfo_ComputeSharedSec:(const UInt256*)priv :(NSData*)pubKey :(NSMutableData**)sharedSec {
+    NSMutableData *temp = [NSMutableData secureDataWithCapacity:65];
+    [temp appendBytes:pubKey.bytes length:33];
+    
+    if (!BRSecp256k1PointMul((BRECPoint*)temp.bytes, priv)) {
+        NSLog(@"Cannot compute EC multiplication: secp256k1_ec_pubkey_tweak_mul");
+        return;
+    }
+    
+    *sharedSec = [NSMutableData secureDataWithCapacity:33];
+    [*sharedSec appendBytes:temp.bytes length:33];
+}
+
+- (BOOL)ComputeSharedSec:(BRTransaction *)transaction :(NSUInteger)outIndex :(NSMutableData **)sharedSec {
+    if (transaction.txType == TX_TYPE_REVEAL_AMOUNT || transaction.txType == TX_TYPE_REVEAL_BOTH) {
+        *sharedSec = [NSMutableData secureDataWithCapacity:33];
+        [*sharedSec appendBytes:[transaction.outputTxPub[outIndex] bytes] length:33];
+    } else {
+        const UInt256 *view = self.viewKey.secretKey;
+        [self ECDHInfo_ComputeSharedSec:view :transaction.outputTxPub[outIndex] :sharedSec];
+    }
+    
+    return YES;
+}
+
+- (BOOL)HaveKey:(NSData *)pubkey {
+    for (int i = 0; i < self.allKeys.count; i++) {
+        BRKey *item = (BRKey *)self.allKeys[i];
+        if ([item.publicKey isEqualToData:pubkey])
+            return YES;
+    }
+    return NO;
+}
+
+- (BOOL)RevealTxOutAmount:(BRTransaction *)transaction :(NSUInteger)outIndex :(UInt64 *)amount :(BRKey *)blind {
+    if ([transaction isCoinBase]) {
+        *amount = [transaction.outputAmounts[outIndex] unsignedLongLongValue];
+        return YES;
+    }
+    
+    if ([transaction isCoinStake]) {
+        if ([transaction.outputAmounts[outIndex] unsignedLongLongValue] > 0) {
+            *amount = [transaction.outputAmounts[outIndex] unsignedLongLongValue];
+            return YES;
+        }
+    }
+    
+    NSData *scriptPubKey = transaction.outputScripts[outIndex];
+    if ([self.amountMaps valueForKey:scriptPubKey.hexString] != nil) {
+        *amount = [[self.amountMaps valueForKey:scriptPubKey.hexString] unsignedLongLongValue];
+        
+        UInt256 value;
+        [[self.blindMaps valueForKey:scriptPubKey.hexString] getValue:&value];
+        blind = [BRKey keyWithSecret:value compressed:YES];
+        return YES;
+    }
+    
+    NSMutableData *pubKey = [NSMutableData secureDataWithCapacity:33];
+    [pubKey appendPubKey:scriptPubKey];
+    if (![self HaveKey:pubKey]) {
+        *amount = 0;
+        return YES;
+    }
+    
+//    if (IsLocked()) {
+//        return true;
+//    }
+    
+    NSMutableData *sharedSec;
+    [self ComputeSharedSec:transaction :outIndex :&sharedSec];
+    
+    UInt256 val, mask;
+    NSArray *maskvalue = (NSArray*)transaction.outputMaskValue[outIndex];
+    [maskvalue[0] getValue:&val];
+    [maskvalue[1] getValue:&mask];
+    
+    UInt256 decodedMask;
+    [self ECDHInfo_Decode:(unsigned char*)&mask :(unsigned char*)&val :sharedSec :&decodedMask :amount];
+    [self.amountMaps setValue:[NSNumber numberWithUnsignedLongLong:*amount] forKey:scriptPubKey.hexString];
+    [self.blindMaps setValue:[NSValue valueWithUInt256:decodedMask] forKey:scriptPubKey.hexString];
+    blind = [BRKey keyWithSecret:decodedMask compressed:YES];
+    return YES;
+}
+
+- (BOOL)IsTransactionForMe:(BRTransaction * _Nonnull)transaction {
+    BOOL ret = NO;
+    for (NSUInteger i = 0; i < transaction.outputAmounts.count; i++) {
+        if ([transaction.outputAmounts[i] unsignedLongLongValue] == 0 &&
+            [transaction.outputScripts[i] length] == 0)
+            continue;
+        
+        NSData *txPub = [NSData dataWithData:transaction.outputTxPub[i]];
+        const UInt256 *spend = self.spendKey.secretKey;
+        const UInt256 *view = self.viewKey.secretKey;
+        NSData *pubSpendKey = self.spendKey.publicKey;
+        
+        //compute the tx destination
+        //P' = Hs(aR)G+B, a = view private, B = spend pub, R = tx public key
+        NSMutableData *aR = [NSMutableData secureDataWithCapacity:65];
+        //copy R into a
+        [aR appendBytes:txPub.bytes length:txPub.length];
+        if (!BRSecp256k1PointMul((BRECPoint*)aR.bytes, view)) {
+            return false;
+        }
+        aR.length = txPub.length;
+        UInt256 HS = aR.SHA256_2;
+        NSMutableData *expectedDestination = [NSMutableData secureDataWithCapacity:65];
+        [expectedDestination appendBytes:pubSpendKey.bytes length:pubSpendKey.length];
+        if (!BRSecp256k1PointAdd((BRECPoint*)expectedDestination.bytes, &HS)) {
+            continue;
+        }
+        NSData *expectedDes = [NSData dataWithBytes:expectedDestination.bytes length:33];
+        NSMutableData *scriptPubKey = [NSMutableData data];
+        [scriptPubKey appendScriptPubKey:expectedDes];
+        if ([scriptPubKey isEqualToData:transaction.outputScripts[i]]) {
+            ret = ret || YES;
+            
+            UInt256 txHash = transaction.txHash;
+            
+            //Compute private key to spend
+            //x = Hs(aR) + b, b = spend private key
+            NSMutableData *HStemp = [NSMutableData secureDataWithCapacity:32];
+            NSMutableData *spendTemp = [NSMutableData secureDataWithCapacity:32];
+            [HStemp appendBytes:&HS length:32];
+            [spendTemp appendBytes:spend length:32];
+            if (!BRSecp256k1ModAdd((UInt256 *)HStemp.bytes, (UInt256 *)spendTemp.bytes)) {
+                NSLog(@"Failed to do secp256k1_ec_privkey_tweak_add");
+                return NO;
+            }
+            NSMutableData *privKeyData = [NSMutableData secureDataWithCapacity:32];
+            [privKeyData appendData:HStemp];
+            BRKey *privKey = [BRKey keyWithSecret:*(UInt256 *)privKeyData.bytes compressed:YES];
+            
+            if (![self HaveKey:privKey.publicKey]) {
+                [self.moc performBlock:^{ // store new address in core data
+                    BRAddressEntity *e = [BRAddressEntity managedObject];
+                    e.purpose = 3;
+                    e.account = 0;
+                    e.address = privKey.privateKey;
+                    e.index = 0;
+                    e.internal = NO;
+                }];
+                [self.allKeys addObject:privKey];
+            }
+            
+            NSData *computed = privKey.publicKey;
+            
+            //put in map from address to txHash used for qt wallet
+            UInt160 tempKeyID = computed.hash160;
+//            UInt64 c;
+//            BRKey *blind;
+//            [self RevealTxOutAmount:transaction :i :&c :blind];
+        }
+    }
+    
+    return ret;
 }
 
 // true if transaction cannot be immediately spent (i.e. if it or an input tx can be replaced-by-fee)
@@ -1021,12 +1231,31 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     NSUInteger n = 0;
     
     //TODO: don't include outputs below TX_MIN_OUTPUT_AMOUNT
-    for (NSString *address in transaction.outputAddresses) {
-        if ([self containsAddress:address]) amount += [transaction.outputAmounts[n] unsignedLongLongValue];
-        n++;
+    for (int i = 0; i < transaction.outputAmounts.count; i++) {
+        UInt64 c = 0;
+        BRKey *blind;
+        [self RevealTxOutAmount:transaction :i :&c :blind];
+        
+        amount += c;
     }
     
     return amount;
+}
+
+- (NSString *)getTransactionDestAddress:(BRTransaction *)transaction
+{
+    for (int i = 0; i < transaction.outputAmounts.count; i++) {
+        NSData *scriptPubKey = transaction.outputScripts[i];
+        NSMutableData *pubKey = [NSMutableData secureDataWithCapacity:33];
+        [pubKey appendPubKey:scriptPubKey];
+        if (![self HaveKey:pubKey])
+            continue;
+        
+        BRKey *destPubKey = [BRKey keyWithPublicKey:pubKey];
+        return destPubKey.address;
+    }
+    
+    return nil;
 }
 
 // retuns the amount sent from the wallet by the trasaction (total wallet outputs consumed, change and fee included)
