@@ -7,7 +7,7 @@
 #define USE_BASIC_CONFIG 1
 
 #include "basic-config.h"
-#include "include/secp256k1.h"
+#include "include/secp256k1_2.h"
 #include "field_impl.h"
 #include "scalar_impl.h"
 #include "group_impl.h"
@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     
     fprintf(fp, "#ifndef _SECP256K1_ECMULT_STATIC_CONTEXT_\n");
     fprintf(fp, "#define _SECP256K1_ECMULT_STATIC_CONTEXT_\n");
-    fprintf(fp, "#include \"group.h\"\n");
+    fprintf(fp, "#include \"src/group.h\"\n");
     fprintf(fp, "#define SC SECP256K1_GE_STORAGE_CONST\n");
     fprintf(fp, "static const secp256k1_ge_storage secp256k1_ecmult_static_context[64][16] = {\n");
 

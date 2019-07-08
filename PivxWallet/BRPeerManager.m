@@ -355,6 +355,10 @@ static const char *dns_seeds[] = {
     return self.lastBlock.height;
 }
 
+- (NSMutableDictionary *)publishedTx {
+    return self.publishedTx;
+}
+
 - (double)syncProgress
 {
     if (! self.downloadPeer && self.syncStartHeight == 0) return 0.0;
@@ -634,6 +638,15 @@ static const char *dns_seeds[] = {
 - (NSUInteger)relayCountForTransaction:(UInt256)txHash
 {
     return [self.txRelays[uint256_obj(txHash)] count];
+}
+
+- (BRMerkleBlock * _Nullable)getBlockWithHeight:(uint32_t)blockHeight {
+    NSValue *blockHash = self.checkpoints[@(blockHeight)];
+    if (blockHash) {
+        return self.blocks[blockHash];
+    }
+
+    return nil;
 }
 
 // seconds since reference date, 00:00:00 01/01/01 GMT

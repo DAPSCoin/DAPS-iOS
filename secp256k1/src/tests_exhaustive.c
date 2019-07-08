@@ -21,9 +21,9 @@
 #define EXHAUSTIVE_TEST_LAMBDA 9   /* cube root of 1 mod 13 */
 #endif
 
-#include "include/secp256k1.h"
+#include "include/secp256k1_2.h"
 #include "group.h"
-#include "secp256k1.c"
+#include "secp256k1_2.c"
 #include "testrand_impl.h"
 
 #ifdef ENABLE_MODULE_RECOVERY
@@ -160,7 +160,7 @@ void test_exhaustive_addition(const secp256k1_ge *group, const secp256k1_gej *gr
     }
 }
 
-void test_exhaustive_ecmult(const secp256k1_context *ctx, const secp256k1_ge *group, const secp256k1_gej *groupj, int order) {
+void test_exhaustive_ecmult(const secp256k1_context2 *ctx, const secp256k1_ge *group, const secp256k1_gej *groupj, int order) {
     int i, j, r_log;
     for (r_log = 1; r_log < order; r_log++) {
         for (j = 0; j < order; j++) {
@@ -174,12 +174,52 @@ void test_exhaustive_ecmult(const secp256k1_context *ctx, const secp256k1_ge *gr
                 ge_equals_gej(&group[(i * r_log + j) % order], &tmp);
 
                 if (i > 0) {
-                    secp256k1_ecmult_const(&tmp, &group[i], &ng);
+                    secp256k1_ecmult_const(&tmp, &group[i], &ng, 256);
                     ge_equals_gej(&group[(i * j) % order], &tmp);
                 }
             }
         }
     }
+}
+
+typedef struct {
+    secp256k1_scalar sc[2];
+    secp256k1_ge pt[2];
+} ecmult_multi_data;
+
+static int ecmult_multi_callback(secp256k1_scalar *sc, secp256k1_ge *pt, size_t idx, void *cbdata) {
+    ecmult_multi_data *data = (ecmult_multi_data*) cbdata;
+    *sc = data->sc[idx];
+    *pt = data->pt[idx];
+    return 1;
+}
+
+void test_exhaustive_ecmult_multi(const secp256k1_context2 *ctx, const secp256k1_ge *group, int order) {
+    int i, j, k, x, y;
+    secp256k1_scratch *scratch = secp256k1_scratch_create(&ctx->error_callback, 4096);
+    for (i = 0; i < order; i++) {
+        for (j = 0; j < order; j++) {
+            for (k = 0; k < order; k++) {
+                for (x = 0; x < order; x++) {
+                    for (y = 0; y < order; y++) {
+                        secp256k1_gej tmp;
+                        secp256k1_scalar g_sc;
+                        ecmult_multi_data data;
+
+                        secp256k1_scalar_set_int(&data.sc[0], i);
+                        secp256k1_scalar_set_int(&data.sc[1], j);
+                        secp256k1_scalar_set_int(&g_sc, k);
+                        data.pt[0] = group[x];
+                        data.pt[1] = group[y];
+
+                        secp256k1_ecmult_multi_var(&ctx->ecmult_ctx, scratch, &tmp, &g_sc, ecmult_multi_callback, &data, 2);
+                        ge_equals_gej(&group[(i * x + j * y + k) % order], &tmp);
+                    }
+                }
+            }
+        }
+    }
+    secp256k1_scratch_destroy(scratch);
 }
 
 void r_from_k(secp256k1_scalar *r, const secp256k1_ge *group, int k) {
@@ -192,15 +232,15 @@ void r_from_k(secp256k1_scalar *r, const secp256k1_ge *group, int k) {
     secp256k1_scalar_set_b32(r, x_bin, NULL);
 }
 
-void test_exhaustive_verify(const secp256k1_context *ctx, const secp256k1_ge *group, int order) {
+void test_exhaustive_verify(const secp256k1_context2 *ctx, const secp256k1_ge *group, int order) {
     int s, r, msg, key;
     for (s = 1; s < order; s++) {
         for (r = 1; r < order; r++) {
             for (msg = 1; msg < order; msg++) {
                 for (key = 1; key < order; key++) {
                     secp256k1_ge nonconst_ge;
-                    secp256k1_ecdsa_signature sig;
-                    secp256k1_pubkey pk;
+                    secp256k1_ecdsa_sign2ature2 sig;
+                    secp256k1_pubkey2 pk;
                     secp256k1_scalar sk_s, msg_s, r_s, s_s;
                     secp256k1_scalar s_times_k_s, msg_plus_r_times_sk_s;
                     int k, should_verify;
@@ -230,19 +270,19 @@ void test_exhaustive_verify(const secp256k1_context *ctx, const secp256k1_ge *gr
                     should_verify &= !secp256k1_scalar_is_high(&s_s);
 
                     /* Verify by calling verify */
-                    secp256k1_ecdsa_signature_save(&sig, &r_s, &s_s);
+                    secp256k1_ecdsa_sign2ature2_save(&sig, &r_s, &s_s);
                     memcpy(&nonconst_ge, &group[sk_s], sizeof(nonconst_ge));
-                    secp256k1_pubkey_save(&pk, &nonconst_ge);
+                    secp256k1_pubkey2_save(&pk, &nonconst_ge);
                     secp256k1_scalar_get_b32(msg32, &msg_s);
                     CHECK(should_verify ==
-                          secp256k1_ecdsa_verify(ctx, &sig, msg32, &pk));
+                          secp256k1_ecdsa_verify2(ctx, &sig, msg32, &pk));
                 }
             }
         }
     }
 }
 
-void test_exhaustive_sign(const secp256k1_context *ctx, const secp256k1_ge *group, int order) {
+void test_exhaustive_sign(const secp256k1_context2 *ctx, const secp256k1_ge *group, int order) {
     int i, j, k;
 
     /* Loop */
@@ -250,7 +290,7 @@ void test_exhaustive_sign(const secp256k1_context *ctx, const secp256k1_ge *grou
         for (j = 1; j < order; j++) {  /* key */
             for (k = 1; k < order; k++) {  /* nonce */
                 const int starting_k = k;
-                secp256k1_ecdsa_signature sig;
+                secp256k1_ecdsa_sign2ature2 sig;
                 secp256k1_scalar sk, msg, r, s, expected_r;
                 unsigned char sk32[32], msg32[32];
                 secp256k1_scalar_set_int(&msg, i);
@@ -258,9 +298,9 @@ void test_exhaustive_sign(const secp256k1_context *ctx, const secp256k1_ge *grou
                 secp256k1_scalar_get_b32(sk32, &sk);
                 secp256k1_scalar_get_b32(msg32, &msg);
 
-                secp256k1_ecdsa_sign(ctx, &sig, msg32, sk32, secp256k1_nonce_function_smallint, &k);
+                secp256k1_ecdsa_sign2(ctx, &sig, msg32, sk32, secp256k1_nonce_function_smallint, &k);
 
-                secp256k1_ecdsa_signature_load(ctx, &r, &s, &sig);
+                secp256k1_ecdsa_sign2ature2_load(ctx, &r, &s, &sig);
                 /* Note that we compute expected_r *after* signing -- this is important
                  * because our nonce-computing function function might change k during
                  * signing. */
@@ -288,7 +328,7 @@ void test_exhaustive_sign(const secp256k1_context *ctx, const secp256k1_ge *grou
 }
 
 #ifdef ENABLE_MODULE_RECOVERY
-void test_exhaustive_recovery_sign(const secp256k1_context *ctx, const secp256k1_ge *group, int order) {
+void test_exhaustive_recovery_sign(const secp256k1_context2 *ctx, const secp256k1_ge *group, int order) {
     int i, j, k;
 
     /* Loop */
@@ -298,7 +338,7 @@ void test_exhaustive_recovery_sign(const secp256k1_context *ctx, const secp256k1
                 const int starting_k = k;
                 secp256k1_fe r_dot_y_normalized;
                 secp256k1_ecdsa_recoverable_signature rsig;
-                secp256k1_ecdsa_signature sig;
+                secp256k1_ecdsa_sign2ature2 sig;
                 secp256k1_scalar sk, msg, r, s, expected_r;
                 unsigned char sk32[32], msg32[32];
                 int expected_recid;
@@ -308,7 +348,7 @@ void test_exhaustive_recovery_sign(const secp256k1_context *ctx, const secp256k1
                 secp256k1_scalar_get_b32(sk32, &sk);
                 secp256k1_scalar_get_b32(msg32, &msg);
 
-                secp256k1_ecdsa_sign_recoverable(ctx, &rsig, msg32, sk32, secp256k1_nonce_function_smallint, &k);
+                secp256k1_ecdsa_sign2_recoverable(ctx, &rsig, msg32, sk32, secp256k1_nonce_function_smallint, &k);
 
                 /* Check directly */
                 secp256k1_ecdsa_recoverable_signature_load(ctx, &r, &s, &recid, &rsig);
@@ -333,7 +373,7 @@ void test_exhaustive_recovery_sign(const secp256k1_context *ctx, const secp256k1
 
                 /* Convert to a standard sig then check */
                 secp256k1_ecdsa_recoverable_signature_convert(ctx, &sig, &rsig);
-                secp256k1_ecdsa_signature_load(ctx, &r, &s, &sig);
+                secp256k1_ecdsa_sign2ature2_load(ctx, &r, &s, &sig);
                 /* Note that we compute expected_r *after* signing -- this is important
                  * because our nonce-computing function function might change k during
                  * signing. */
@@ -351,7 +391,7 @@ void test_exhaustive_recovery_sign(const secp256k1_context *ctx, const secp256k1
     }
 }
 
-void test_exhaustive_recovery_verify(const secp256k1_context *ctx, const secp256k1_ge *group, int order) {
+void test_exhaustive_recovery_verify(const secp256k1_context2 *ctx, const secp256k1_ge *group, int order) {
     /* This is essentially a copy of test_exhaustive_verify, with recovery added */
     int s, r, msg, key;
     for (s = 1; s < order; s++) {
@@ -360,8 +400,8 @@ void test_exhaustive_recovery_verify(const secp256k1_context *ctx, const secp256
                 for (key = 1; key < order; key++) {
                     secp256k1_ge nonconst_ge;
                     secp256k1_ecdsa_recoverable_signature rsig;
-                    secp256k1_ecdsa_signature sig;
-                    secp256k1_pubkey pk;
+                    secp256k1_ecdsa_sign2ature2 sig;
+                    secp256k1_pubkey2 pk;
                     secp256k1_scalar sk_s, msg_s, r_s, s_s;
                     secp256k1_scalar s_times_k_s, msg_plus_r_times_sk_s;
                     int recid = 0;
@@ -401,9 +441,9 @@ void test_exhaustive_recovery_verify(const secp256k1_context *ctx, const secp256
                     secp256k1_ecdsa_recoverable_signature_save(&rsig, &r_s, &s_s, recid);
                     secp256k1_ecdsa_recoverable_signature_convert(ctx, &sig, &rsig);
                     memcpy(&nonconst_ge, &group[sk_s], sizeof(nonconst_ge));
-                    secp256k1_pubkey_save(&pk, &nonconst_ge);
+                    secp256k1_pubkey2_save(&pk, &nonconst_ge);
                     CHECK(should_verify ==
-                          secp256k1_ecdsa_verify(ctx, &sig, msg32, &pk));
+                          secp256k1_ecdsa_verify2(ctx, &sig, msg32, &pk));
                 }
             }
         }
@@ -417,7 +457,7 @@ int main(void) {
     secp256k1_ge group[EXHAUSTIVE_TEST_ORDER];
 
     /* Build context */
-    secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
+    secp256k1_context2 *ctx = secp256k1_context_create2(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
 
     /* TODO set z = 1, then do num_tests runs with random z values */
 
@@ -456,6 +496,7 @@ int main(void) {
 #endif
     test_exhaustive_addition(group, groupj, EXHAUSTIVE_TEST_ORDER);
     test_exhaustive_ecmult(ctx, group, groupj, EXHAUSTIVE_TEST_ORDER);
+    test_exhaustive_ecmult_multi(ctx, group, EXHAUSTIVE_TEST_ORDER);
     test_exhaustive_sign(ctx, group, EXHAUSTIVE_TEST_ORDER);
     test_exhaustive_verify(ctx, group, EXHAUSTIVE_TEST_ORDER);
 

@@ -131,6 +131,32 @@
 		BAA6E3F11BD5CA5900773205 /* BRAWReceiveMoneyInterfaceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA6E3F01BD5CA5900773205 /* BRAWReceiveMoneyInterfaceController.swift */; };
 		BAC7B6BE1BD9C29900165B84 /* BRPhoneWCSessionManager.m in Sources */ = {isa = PBXBuildFile; fileRef = BAC7B6BD1BD9C29900165B84 /* BRPhoneWCSessionManager.m */; };
 		BAE12C061B2DEEF700895CC5 /* BRTodayViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = BAE12C051B2DEEF700895CC5 /* BRTodayViewController.m */; };
+		E33544FC22D3409400CC98FE /* SHA2.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544E122D3409400CC98FE /* SHA2.circ */; };
+		E33544FD22D3409400CC98FE /* SHA2.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544E222D3409400CC98FE /* SHA2.assn */; };
+		E33544FE22D3409400CC98FE /* pedersen-1536.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544E322D3409400CC98FE /* pedersen-1536.circ */; };
+		E33544FF22D3409400CC98FE /* pedersen-1536.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544E422D3409400CC98FE /* pedersen-1536.assn */; };
+		E335450022D3409400CC98FE /* pedersen-3072.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544E522D3409400CC98FE /* pedersen-3072.circ */; };
+		E335450122D3409400CC98FE /* pedersen-3.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544E622D3409400CC98FE /* pedersen-3.circ */; };
+		E335450222D3409400CC98FE /* pedersen-192-preimage.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544E722D3409400CC98FE /* pedersen-192-preimage.assn */; };
+		E335450322D3409400CC98FE /* pedersen-192-preimage.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544E822D3409400CC98FE /* pedersen-192-preimage.circ */; };
+		E335450422D3409400CC98FE /* pedersen-3072.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544E922D3409400CC98FE /* pedersen-3072.assn */; };
+		E335450522D3409400CC98FE /* pedersen-3.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544EA22D3409400CC98FE /* pedersen-3.assn */; };
+		E335450622D3409400CC98FE /* pedersen-768.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544EB22D3409400CC98FE /* pedersen-768.assn */; };
+		E335450722D3409400CC98FE /* pedersen-768.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544EC22D3409400CC98FE /* pedersen-768.circ */; };
+		E335450822D3409400CC98FE /* pedersen-24.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544ED22D3409400CC98FE /* pedersen-24.assn */; };
+		E335450922D3409400CC98FE /* pedersen-24.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544EE22D3409400CC98FE /* pedersen-24.circ */; };
+		E335450A22D3409400CC98FE /* pedersen-12.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544EF22D3409400CC98FE /* pedersen-12.circ */; };
+		E335450B22D3409400CC98FE /* pedersen-12.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544F022D3409400CC98FE /* pedersen-12.assn */; };
+		E335450C22D3409400CC98FE /* pedersen-48.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544F122D3409400CC98FE /* pedersen-48.assn */; };
+		E335450D22D3409400CC98FE /* pedersen-48.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544F222D3409400CC98FE /* pedersen-48.circ */; };
+		E335450E22D3409400CC98FE /* pedersen-6.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544F322D3409400CC98FE /* pedersen-6.circ */; };
+		E335450F22D3409400CC98FE /* pedersen-96.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544F422D3409400CC98FE /* pedersen-96.assn */; };
+		E335451022D3409400CC98FE /* pedersen-96.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544F522D3409400CC98FE /* pedersen-96.circ */; };
+		E335451122D3409400CC98FE /* pedersen-6.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544F622D3409400CC98FE /* pedersen-6.assn */; };
+		E335451222D3409400CC98FE /* pedersen-192.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544F722D3409400CC98FE /* pedersen-192.circ */; };
+		E335451322D3409400CC98FE /* pedersen-192.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544F822D3409400CC98FE /* pedersen-192.assn */; };
+		E335451422D3409400CC98FE /* pedersen-384.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544F922D3409400CC98FE /* pedersen-384.circ */; };
+		E335451522D3409400CC98FE /* pedersen-384.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544FA22D3409400CC98FE /* pedersen-384.assn */; };
 		E893E93EC6CB2E63C28D68E6 /* Pods_pivxwallet.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52C978F753836B477A7FE473 /* Pods_pivxwallet.framework */; };
 		F3C1E5F2065BE81CE87C70EB /* Pods_pivxwallet.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 738E43B4B5613FDC48BBDAE6 /* Pods_pivxwallet.framework */; };
 		FB021E4F1E42EB5F00D17638 /* NSAttributedString+Attachments.m in Sources */ = {isa = PBXBuildFile; fileRef = FB021E4E1E42EB5F00D17638 /* NSAttributedString+Attachments.m */; };
@@ -353,7 +379,6 @@
 		75878BBE192ACD46002505AB /* BRAmountViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; lineEnding = 0; path = BRAmountViewController.m; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objc; };
 		75878BC0192AEC3F002505AB /* BRReceiveViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; lineEnding = 0; path = BRReceiveViewController.m; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		75878BC4192B1AF0002505AB /* BRTxHistoryViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BRTxHistoryViewController.h; sourceTree = "<group>"; };
-		758B16241AA9ADC4002C65DD /* secp256k1.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1.h; sourceTree = "<group>"; };
 		758B16301AA9ADC4002C65DD /* ecdsa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ecdsa.h; sourceTree = "<group>"; };
 		758B16311AA9ADC4002C65DD /* ecdsa_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ecdsa_impl.h; sourceTree = "<group>"; };
 		758B16321AA9ADC4002C65DD /* eckey.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = eckey.h; sourceTree = "<group>"; };
@@ -459,6 +484,60 @@
 		BAE12BEA1B2DEE7F00895CC5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BAE12C041B2DEEF700895CC5 /* BRTodayViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BRTodayViewController.h; sourceTree = "<group>"; };
 		BAE12C051B2DEEF700895CC5 /* BRTodayViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BRTodayViewController.m; sourceTree = "<group>"; };
+		E33544BF22D33FBB00CC98FE /* secp256k1_surjectionproof.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_surjectionproof.h; sourceTree = "<group>"; };
+		E33544C022D33FBB00CC98FE /* secp256k1_generator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_generator.h; sourceTree = "<group>"; };
+		E33544C122D33FBC00CC98FE /* secp256k1_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_types.h; sourceTree = "<group>"; };
+		E33544C222D33FBC00CC98FE /* secp256k1_whitelist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_whitelist.h; sourceTree = "<group>"; };
+		E33544C322D33FBC00CC98FE /* secp256k1_bulletproofs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_bulletproofs.h; sourceTree = "<group>"; };
+		E33544C422D33FBD00CC98FE /* secp256k1_rangeproof.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_rangeproof.h; sourceTree = "<group>"; };
+		E33544C522D33FBD00CC98FE /* secp256k1_commitment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_commitment.h; sourceTree = "<group>"; };
+		E33544D422D3408700CC98FE /* main_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = main_impl.h; sourceTree = "<group>"; };
+		E33544D722D3409400CC98FE /* rangeproof_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = rangeproof_impl.h; sourceTree = "<group>"; };
+		E33544D822D3409400CC98FE /* inner_product_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = inner_product_impl.h; sourceTree = "<group>"; };
+		E33544D922D3409400CC98FE /* circuit_compress_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = circuit_compress_impl.h; sourceTree = "<group>"; };
+		E33544DC22D3409400CC98FE /* main_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = main_impl.h; sourceTree = "<group>"; };
+		E33544DD22D3409400CC98FE /* util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
+		E33544DE22D3409400CC98FE /* circuit_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = circuit_impl.h; sourceTree = "<group>"; };
+		E33544DF22D3409400CC98FE /* parser_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = parser_impl.h; sourceTree = "<group>"; };
+		E33544E122D3409400CC98FE /* SHA2.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = SHA2.circ; sourceTree = "<group>"; };
+		E33544E222D3409400CC98FE /* SHA2.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = SHA2.assn; sourceTree = "<group>"; };
+		E33544E322D3409400CC98FE /* pedersen-1536.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-1536.circ"; sourceTree = "<group>"; };
+		E33544E422D3409400CC98FE /* pedersen-1536.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-1536.assn"; sourceTree = "<group>"; };
+		E33544E522D3409400CC98FE /* pedersen-3072.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-3072.circ"; sourceTree = "<group>"; };
+		E33544E622D3409400CC98FE /* pedersen-3.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-3.circ"; sourceTree = "<group>"; };
+		E33544E722D3409400CC98FE /* pedersen-192-preimage.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-192-preimage.assn"; sourceTree = "<group>"; };
+		E33544E822D3409400CC98FE /* pedersen-192-preimage.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-192-preimage.circ"; sourceTree = "<group>"; };
+		E33544E922D3409400CC98FE /* pedersen-3072.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-3072.assn"; sourceTree = "<group>"; };
+		E33544EA22D3409400CC98FE /* pedersen-3.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-3.assn"; sourceTree = "<group>"; };
+		E33544EB22D3409400CC98FE /* pedersen-768.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-768.assn"; sourceTree = "<group>"; };
+		E33544EC22D3409400CC98FE /* pedersen-768.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-768.circ"; sourceTree = "<group>"; };
+		E33544ED22D3409400CC98FE /* pedersen-24.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-24.assn"; sourceTree = "<group>"; };
+		E33544EE22D3409400CC98FE /* pedersen-24.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-24.circ"; sourceTree = "<group>"; };
+		E33544EF22D3409400CC98FE /* pedersen-12.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-12.circ"; sourceTree = "<group>"; };
+		E33544F022D3409400CC98FE /* pedersen-12.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-12.assn"; sourceTree = "<group>"; };
+		E33544F122D3409400CC98FE /* pedersen-48.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-48.assn"; sourceTree = "<group>"; };
+		E33544F222D3409400CC98FE /* pedersen-48.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-48.circ"; sourceTree = "<group>"; };
+		E33544F322D3409400CC98FE /* pedersen-6.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-6.circ"; sourceTree = "<group>"; };
+		E33544F422D3409400CC98FE /* pedersen-96.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-96.assn"; sourceTree = "<group>"; };
+		E33544F522D3409400CC98FE /* pedersen-96.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-96.circ"; sourceTree = "<group>"; };
+		E33544F622D3409400CC98FE /* pedersen-6.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-6.assn"; sourceTree = "<group>"; };
+		E33544F722D3409400CC98FE /* pedersen-192.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-192.circ"; sourceTree = "<group>"; };
+		E33544F822D3409400CC98FE /* pedersen-192.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-192.assn"; sourceTree = "<group>"; };
+		E33544F922D3409400CC98FE /* pedersen-384.circ */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-384.circ"; sourceTree = "<group>"; };
+		E33544FA22D3409400CC98FE /* pedersen-384.assn */ = {isa = PBXFileReference; lastKnownFileType = file; path = "pedersen-384.assn"; sourceTree = "<group>"; };
+		E335451922D340A100CC98FE /* pedersen_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pedersen_impl.h; sourceTree = "<group>"; };
+		E335451A22D340A100CC98FE /* main_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = main_impl.h; sourceTree = "<group>"; };
+		E335451D22D340B100CC98FE /* rangeproof_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = rangeproof_impl.h; sourceTree = "<group>"; };
+		E335451E22D340B100CC98FE /* borromean_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = borromean_impl.h; sourceTree = "<group>"; };
+		E335452122D340B100CC98FE /* main_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = main_impl.h; sourceTree = "<group>"; };
+		E335452222D340B100CC98FE /* rangeproof.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = rangeproof.h; sourceTree = "<group>"; };
+		E335452322D340B100CC98FE /* borromean.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = borromean.h; sourceTree = "<group>"; };
+		E335452622D340BB00CC98FE /* surjection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = surjection.h; sourceTree = "<group>"; };
+		E335452A22D340BB00CC98FE /* surjection_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = surjection_impl.h; sourceTree = "<group>"; };
+		E335452B22D340BB00CC98FE /* main_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = main_impl.h; sourceTree = "<group>"; };
+		E335453122D340C300CC98FE /* whitelist_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = whitelist_impl.h; sourceTree = "<group>"; };
+		E335453222D340C300CC98FE /* main_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = main_impl.h; sourceTree = "<group>"; };
+		E335453622D3496900CC98FE /* secp256k1_2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_2.h; sourceTree = "<group>"; };
 		E34725F322C41CEC0050348A /* PIVX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = PIVX.entitlements; path = pivxwallet/PIVX.entitlements; sourceTree = "<group>"; };
 		F3767C71363A17C2937E2034 /* Pods-pivxwallet.testnet.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-pivxwallet.testnet.xcconfig"; path = "Pods/Target Support Files/Pods-pivxwallet/Pods-pivxwallet.testnet.xcconfig"; sourceTree = "<group>"; };
 		FB021E4D1E42EB5F00D17638 /* NSAttributedString+Attachments.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSAttributedString+Attachments.h"; sourceTree = "<group>"; };
@@ -816,7 +895,14 @@
 		758B16231AA9ADC4002C65DD /* include */ = {
 			isa = PBXGroup;
 			children = (
-				758B16241AA9ADC4002C65DD /* secp256k1.h */,
+				E335453622D3496900CC98FE /* secp256k1_2.h */,
+				E33544C322D33FBC00CC98FE /* secp256k1_bulletproofs.h */,
+				E33544C522D33FBD00CC98FE /* secp256k1_commitment.h */,
+				E33544C022D33FBB00CC98FE /* secp256k1_generator.h */,
+				E33544C422D33FBD00CC98FE /* secp256k1_rangeproof.h */,
+				E33544BF22D33FBB00CC98FE /* secp256k1_surjectionproof.h */,
+				E33544C122D33FBC00CC98FE /* secp256k1_types.h */,
+				E33544C222D33FBC00CC98FE /* secp256k1_whitelist.h */,
 				75F2E0B81BE5596200EAE861 /* secp256k1_ecdh.h */,
 				75F2E0B91BE5596200EAE861 /* secp256k1_recovery.h */,
 			);
@@ -1000,6 +1086,12 @@
 		75F2E0BE1BE559F200EAE861 /* modules */ = {
 			isa = PBXGroup;
 			children = (
+				E335452E22D340C300CC98FE /* whitelist */,
+				E335452522D340BB00CC98FE /* surjection */,
+				E335451C22D340B100CC98FE /* rangeproof */,
+				E335451622D340A100CC98FE /* commitment */,
+				E33544D622D3409400CC98FE /* bulletproofs */,
+				E33544D122D3408700CC98FE /* generator */,
 				75F2E0BF1BE559F200EAE861 /* ecdh */,
 				75F2E0C31BE559F200EAE861 /* recovery */,
 			);
@@ -1086,6 +1178,102 @@
 				BAE12BEA1B2DEE7F00895CC5 /* Info.plist */,
 			);
 			path = TodayExtension;
+			sourceTree = "<group>";
+		};
+		E33544D122D3408700CC98FE /* generator */ = {
+			isa = PBXGroup;
+			children = (
+				E33544D422D3408700CC98FE /* main_impl.h */,
+			);
+			path = generator;
+			sourceTree = "<group>";
+		};
+		E33544D622D3409400CC98FE /* bulletproofs */ = {
+			isa = PBXGroup;
+			children = (
+				E33544D722D3409400CC98FE /* rangeproof_impl.h */,
+				E33544D822D3409400CC98FE /* inner_product_impl.h */,
+				E33544D922D3409400CC98FE /* circuit_compress_impl.h */,
+				E33544DC22D3409400CC98FE /* main_impl.h */,
+				E33544DD22D3409400CC98FE /* util.h */,
+				E33544DE22D3409400CC98FE /* circuit_impl.h */,
+				E33544DF22D3409400CC98FE /* parser_impl.h */,
+				E33544E022D3409400CC98FE /* bin_circuits */,
+			);
+			path = bulletproofs;
+			sourceTree = "<group>";
+		};
+		E33544E022D3409400CC98FE /* bin_circuits */ = {
+			isa = PBXGroup;
+			children = (
+				E33544E122D3409400CC98FE /* SHA2.circ */,
+				E33544E222D3409400CC98FE /* SHA2.assn */,
+				E33544E322D3409400CC98FE /* pedersen-1536.circ */,
+				E33544E422D3409400CC98FE /* pedersen-1536.assn */,
+				E33544E522D3409400CC98FE /* pedersen-3072.circ */,
+				E33544E622D3409400CC98FE /* pedersen-3.circ */,
+				E33544E722D3409400CC98FE /* pedersen-192-preimage.assn */,
+				E33544E822D3409400CC98FE /* pedersen-192-preimage.circ */,
+				E33544E922D3409400CC98FE /* pedersen-3072.assn */,
+				E33544EA22D3409400CC98FE /* pedersen-3.assn */,
+				E33544EB22D3409400CC98FE /* pedersen-768.assn */,
+				E33544EC22D3409400CC98FE /* pedersen-768.circ */,
+				E33544ED22D3409400CC98FE /* pedersen-24.assn */,
+				E33544EE22D3409400CC98FE /* pedersen-24.circ */,
+				E33544EF22D3409400CC98FE /* pedersen-12.circ */,
+				E33544F022D3409400CC98FE /* pedersen-12.assn */,
+				E33544F122D3409400CC98FE /* pedersen-48.assn */,
+				E33544F222D3409400CC98FE /* pedersen-48.circ */,
+				E33544F322D3409400CC98FE /* pedersen-6.circ */,
+				E33544F422D3409400CC98FE /* pedersen-96.assn */,
+				E33544F522D3409400CC98FE /* pedersen-96.circ */,
+				E33544F622D3409400CC98FE /* pedersen-6.assn */,
+				E33544F722D3409400CC98FE /* pedersen-192.circ */,
+				E33544F822D3409400CC98FE /* pedersen-192.assn */,
+				E33544F922D3409400CC98FE /* pedersen-384.circ */,
+				E33544FA22D3409400CC98FE /* pedersen-384.assn */,
+			);
+			path = bin_circuits;
+			sourceTree = "<group>";
+		};
+		E335451622D340A100CC98FE /* commitment */ = {
+			isa = PBXGroup;
+			children = (
+				E335451922D340A100CC98FE /* pedersen_impl.h */,
+				E335451A22D340A100CC98FE /* main_impl.h */,
+			);
+			path = commitment;
+			sourceTree = "<group>";
+		};
+		E335451C22D340B100CC98FE /* rangeproof */ = {
+			isa = PBXGroup;
+			children = (
+				E335451D22D340B100CC98FE /* rangeproof_impl.h */,
+				E335451E22D340B100CC98FE /* borromean_impl.h */,
+				E335452122D340B100CC98FE /* main_impl.h */,
+				E335452222D340B100CC98FE /* rangeproof.h */,
+				E335452322D340B100CC98FE /* borromean.h */,
+			);
+			path = rangeproof;
+			sourceTree = "<group>";
+		};
+		E335452522D340BB00CC98FE /* surjection */ = {
+			isa = PBXGroup;
+			children = (
+				E335452622D340BB00CC98FE /* surjection.h */,
+				E335452A22D340BB00CC98FE /* surjection_impl.h */,
+				E335452B22D340BB00CC98FE /* main_impl.h */,
+			);
+			path = surjection;
+			sourceTree = "<group>";
+		};
+		E335452E22D340C300CC98FE /* whitelist */ = {
+			isa = PBXGroup;
+			children = (
+				E335453122D340C300CC98FE /* whitelist_impl.h */,
+				E335453222D340C300CC98FE /* main_impl.h */,
+			);
+			path = whitelist;
 			sourceTree = "<group>";
 		};
 		FB021E501E47E17200D17638 /* FBShimmering */ = {
@@ -1376,22 +1564,48 @@
 				2BFA523A1FE0AC4D00A3C808 /* Menu.xib in Resources */,
 				757E09991ADB8EEB006FD352 /* Localizable.strings in Resources */,
 				2B5735811FE0882B00110745 /* Step1View.xib in Resources */,
+				E335450122D3409400CC98FE /* pedersen-3.circ in Resources */,
 				75F2E0D31BE9803900EAE861 /* Launch Screen.storyboard in Resources */,
+				E335451522D3409400CC98FE /* pedersen-384.assn in Resources */,
+				E335450222D3409400CC98FE /* pedersen-192-preimage.assn in Resources */,
+				E335450F22D3409400CC98FE /* pedersen-96.assn in Resources */,
+				E33544FC22D3409400CC98FE /* SHA2.circ in Resources */,
+				E335450522D3409400CC98FE /* pedersen-3.assn in Resources */,
 				2B57357A1FE087D800110745 /* Setup.xib in Resources */,
+				E335451322D3409400CC98FE /* pedersen-192.assn in Resources */,
+				E33544FE22D3409400CC98FE /* pedersen-1536.circ in Resources */,
+				E335450B22D3409400CC98FE /* pedersen-12.assn in Resources */,
+				E335450822D3409400CC98FE /* pedersen-24.assn in Resources */,
+				E335450022D3409400CC98FE /* pedersen-3072.circ in Resources */,
+				E335451122D3409400CC98FE /* pedersen-6.assn in Resources */,
 				2B5735831FE0882B00110745 /* Step4View.xib in Resources */,
 				2B5735671FE04BC400110745 /* PivxAssets.xcassets in Resources */,
 				2BBE61991FE482AB00D06CD7 /* NewAddress.xib in Resources */,
 				2B5735821FE0882B00110745 /* Step3View.xib in Resources */,
 				2B4838CB1FE21655001C8D09 /* Donation.xib in Resources */,
+				E335450A22D3409400CC98FE /* pedersen-12.circ in Resources */,
 				2BBE61AE1FE48BC000D06CD7 /* EmptyCell.xib in Resources */,
 				2B5735801FE0882B00110745 /* Step2View.xib in Resources */,
+				E335450D22D3409400CC98FE /* pedersen-48.circ in Resources */,
 				75C0E3BF1B1BA294007BC531 /* BIP39Words.plist in Resources */,
+				E335450422D3409400CC98FE /* pedersen-3072.assn in Resources */,
+				E335451222D3409400CC98FE /* pedersen-192.circ in Resources */,
+				E335451022D3409400CC98FE /* pedersen-96.circ in Resources */,
 				2BBE61AF1FE48BC000D06CD7 /* AddressContactCell.xib in Resources */,
+				E33544FD22D3409400CC98FE /* SHA2.assn in Resources */,
 				75E83CF61B5F997A0038FB70 /* coinflip.aiff in Resources */,
+				E335450722D3409400CC98FE /* pedersen-768.circ in Resources */,
 				755FC9ED1BF1DF1B00164ABB /* BREventConfirmView.xib in Resources */,
+				E335450E22D3409400CC98FE /* pedersen-6.circ in Resources */,
+				E335450322D3409400CC98FE /* pedersen-192-preimage.circ in Resources */,
 				752E28F719235B3000DB5A3C /* FixedPeers.plist in Resources */,
+				E335451422D3409400CC98FE /* pedersen-384.circ in Resources */,
 				2B8A1C9B1FEB587800C7427C /* EmptyTableCell.xib in Resources */,
+				E335450922D3409400CC98FE /* pedersen-24.circ in Resources */,
+				E335450622D3409400CC98FE /* pedersen-768.assn in Resources */,
 				75D5F3DE191EC270004AB296 /* Main.storyboard in Resources */,
+				E335450C22D3409400CC98FE /* pedersen-48.assn in Resources */,
+				E33544FF22D3409400CC98FE /* pedersen-1536.assn in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1493,7 +1707,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if which bartycrouch > /dev/null; then\n# Incrementally update all Storyboards/XIBs strings files\nbartycrouch interfaces -p \"$PROJECT_DIR\"\n\n# Add new keys to Localizable.strings files from NSLocalizedString in code\nbartycrouch code -p \"$PROJECT_DIR\" -l \"$PROJECT_DIR\" -a -s -k\nelse\necho \"warning: BartyCrouch not installed, download it from https://github.com/Flinesoft/BartyCrouch\"\nfi";
+			shellScript = "if which bartycrouch > /dev/null; then\n# Incrementally update all Storyboards/XIBs strings files\nbartycrouch interfaces -p \"$PROJECT_DIR\"\n\n# Add new keys to Localizable.strings files from NSLocalizedString in code\nbartycrouch code -p \"$PROJECT_DIR\" -l \"$PROJECT_DIR\" -a -s -k\nelse\necho \"warning: BartyCrouch not installed, download it from https://github.com/Flinesoft/BartyCrouch\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

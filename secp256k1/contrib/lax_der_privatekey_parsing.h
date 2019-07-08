@@ -25,14 +25,14 @@
  * library are sufficient.
  */
 
-#ifndef _SECP256K1_CONTRIB_BER_PRIVATEKEY_H_
-#define _SECP256K1_CONTRIB_BER_PRIVATEKEY_H_
+#ifndef SECP256K1_CONTRIB_BER_PRIVATEKEY_H
+#define SECP256K1_CONTRIB_BER_PRIVATEKEY_H
 
-#include <secp256k1.h>
+#include <secp256k1_2.h>
 
-# ifdef __cplusplus
+#ifdef __cplusplus
 extern "C" {
-# endif
+#endif
 
 /** Export a private key in DER format.
  *
@@ -55,7 +55,7 @@ extern "C" {
  *  guaranteed to be parsable by secp256k1_ec_privkey_import_der
  */
 SECP256K1_WARN_UNUSED_RESULT int ec_privkey_export_der(
-    const secp256k1_context* ctx,
+    const secp256k1_context2* ctx,
     unsigned char *privkey,
     size_t *privkeylen,
     const unsigned char *seckey,
@@ -77,7 +77,7 @@ SECP256K1_WARN_UNUSED_RESULT int ec_privkey_export_der(
  * key.
  */
 SECP256K1_WARN_UNUSED_RESULT int ec_privkey_import_der(
-    const secp256k1_context* ctx,
+    const secp256k1_context2* ctx,
     unsigned char *seckey,
     const unsigned char *privkey,
     size_t privkeylen
@@ -87,4 +87,4 @@ SECP256K1_WARN_UNUSED_RESULT int ec_privkey_import_der(
 }
 #endif
 
-#endif
+#endif /* SECP256K1_CONTRIB_BER_PRIVATEKEY_H */

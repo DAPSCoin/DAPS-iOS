@@ -41,6 +41,7 @@ FOUNDATION_EXPORT NSString* _Nonnull const BRPeerManagerTxStatusNotification;
 
 @property (nonatomic, readonly) BOOL connected;
 @property (nonatomic, readonly) uint32_t lastBlockHeight;
+@property (nonatomic, readonly) NSMutableDictionary *publishedTx;
 @property (nonatomic, readonly) uint32_t estimatedBlockHeight; // last block height reported by current download peer
 @property (nonatomic, readonly) double syncProgress;
 @property (nonatomic, readonly) NSUInteger peerCount; // number of connected peers
@@ -55,5 +56,6 @@ FOUNDATION_EXPORT NSString* _Nonnull const BRPeerManagerTxStatusNotification;
                 completion:(void (^ _Nonnull)(NSError * _Nullable error))completion;
 - (NSUInteger)relayCountForTransaction:(UInt256)txHash; // number of connected peers that have relayed the transaction
 - (NSTimeInterval)timestampForBlockHeight:(uint32_t)blockHeight; // seconds since reference date, 00:00:00 01/01/01 GMT
+- (BRMerkleBlock * _Nullable)getBlockWithHeight:(uint32_t)blockHeight;
 
 @end

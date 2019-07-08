@@ -33,6 +33,7 @@
 #import "BRTxMetadataEntity.h"
 #import "BRPeerManager.h"
 #import "BRKeySequence.h"
+#import "BRMerkleBlock.h"
 #import "NSData+Bitcoin.h"
 #import "NSMutableData+Bitcoin.h"
 #import "NSManagedObject+Sugar.h"
@@ -64,6 +65,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 @property (nonatomic, strong) NSManagedObjectContext *moc;
 @property (nonatomic, strong) NSMutableDictionary *amountMaps;
 @property (nonatomic, strong) NSMutableDictionary *blindMaps;
+@property (nonatomic, strong) NSMutableArray *coinbaseDecoysPool;
 
 @property (nonatomic, strong) BRKey *viewKey, *spendKey;
 
@@ -96,6 +98,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     self.blindMaps = [NSMutableDictionary dictionary];
     self.viewKey = nil;
     self.spendKey = nil;
+    self.coinbaseDecoysPool = [NSMutableArray array];
     
     [self.moc performBlockAndWait:^{
         [BRAddressEntity setContext:self.moc];
@@ -1110,6 +1113,195 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     }
     
     return ret;
+}
+
+- (bool)findCoinbaseDecoy:(BRUTXO) outpoint {
+    NSValue *outpointValue = brutxo_obj(outpoint);
+    for (NSValue *output in self.coinbaseDecoysPool) {
+        if ([output isEqualToValue:outpointValue])
+            return YES;
+    }
+    
+    return NO;
+}
+
+- (bool)selectDecoysAndRealIndex: (BRTransaction *_Nonnull)tx :(int *_Nonnull)myIndex :(int)ringSize {
+    if (self.coinbaseDecoysPool.count <= 14) {
+        for (int i = [self blockHeight] - COINBASE_MATURITY; i > 0; i--) {
+            if (self.coinbaseDecoysPool.count > 14) break;
+            BRMerkleBlock *b = [[BRPeerManager sharedInstance] getBlockWithHeight:i];
+            if (b) {
+                int coinbaseIdx = 0;
+                if ([self IsProofOfStake:b])
+                    coinbaseIdx = 1;
+                
+                UInt256 txHash;
+                [[b.txHashes objectAtIndex:coinbaseIdx] getValue:&txHash];
+                BRTransaction *coinbase = [self transactionForHash:txHash];
+                
+                for (size_t i = 0; i < coinbase.outputAmounts.count; i++) {
+                    if ([coinbase.outputAmounts[i] unsignedLongLongValue] == 0 &&
+                        [coinbase.outputScripts[i] length] == 0)
+                        continue;
+                    if ([coinbase.outputAmounts[i] unsignedLongLongValue] == -1)
+                        continue;
+                    
+                    if ((rand() % 100) <= PROBABILITY_NEW_COIN_SELECTED) {
+                        BRUTXO newOutPoint;
+                        newOutPoint.hash = coinbase.txHash;
+                        newOutPoint.n = i;
+                        if ([self findCoinbaseDecoy:newOutPoint])
+                            continue;
+                        if (self.coinbaseDecoysPool.count >= MAX_DECOYS_POOL) {
+                            int selected = rand() % MAX_DECOYS_POOL;
+                            self.coinbaseDecoysPool[selected] = brutxo_obj(newOutPoint);
+                        } else {
+                            [self.coinbaseDecoysPool addObject:brutxo_obj(newOutPoint)];
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    //Choose decoys
+    
+    *myIndex = -1;
+    for(size_t i = 0; i < tx.inputHashes.count; i++) {
+        //generate key images and choose decoys
+        BRTransaction *txPrev;
+        UInt256 hashBlock;
+        
+        txPrev = [BRPeerManager sharedInstance].publishedTx[tx.inputHashes[i]];
+        if (!txPrev)
+            txPrev = self.allTx[tx.inputHashes[i]];
+        if (!txPrev)
+            return NO;
+        
+        
+    }
+
+//        CKeyImage ki;
+//        if (!generateKeyImage(txPrev.vout[tx.vin[i].prevout.n].scriptPubKey, ki)) {
+//            LogPrintf("Cannot generate key image");
+//            return false;
+//        } else {
+//            tx.vin[i].keyImage = ki;
+//        }
+//
+//        pendingKeyImages.push_back(ki.GetHex());
+//        int numDecoys = 0;
+//        if (txPrev.IsCoinAudit() || txPrev.IsCoinBase() || txPrev.IsCoinStake()) {
+//            if ((int)coinbaseDecoysPool.size() >= ringSize * 5) {
+//                while(numDecoys < ringSize) {
+//                    bool duplicated = false;
+//                    COutPoint outpoint = coinbaseDecoysPool[rand() % coinbaseDecoysPool.size()];
+//                    for (size_t d = 0; d < tx.vin[i].decoys.size(); d++) {
+//                        if (tx.vin[i].decoys[d] == outpoint) {
+//                            duplicated = true;
+//                            break;
+//                        }
+//                    }
+//                    if (duplicated) {
+//                        continue;
+//                    }
+//                    tx.vin[i].decoys.push_back(outpoint);
+//                    numDecoys++;
+//                }
+//            } else if ((int)coinbaseDecoysPool.size() >= ringSize) {
+//                for (size_t j = 0; j < coinbaseDecoysPool.size(); j++) {
+//                    tx.vin[i].decoys.push_back(coinbaseDecoysPool[j]);
+//                    numDecoys++;
+//                    if (numDecoys == ringSize) break;
+//                }
+//            } else {
+//                LogPrintf("\nDont have enough decoys, please wait for around 10 minutes and re-try\n");
+//                return false;
+//            }
+//        } else {
+//            std::vector<COutPoint> decoySet = userDecoysPool;
+//            decoySet.insert(decoySet.end(), coinbaseDecoysPool.begin(), coinbaseDecoysPool.end());
+//            if ((int)decoySet.size() >= ringSize * 5) {
+//                while(numDecoys < ringSize) {
+//                    bool duplicated = false;
+//                    COutPoint outpoint = decoySet[rand() % decoySet.size()];
+//                    for (size_t d = 0; d < tx.vin[i].decoys.size(); d++) {
+//                        if (tx.vin[i].decoys[d] == outpoint) {
+//                            duplicated = true;
+//                            break;
+//                        }
+//                    }
+//                    if (duplicated) {
+//                        continue;
+//                    }
+//                    tx.vin[i].decoys.push_back(outpoint);
+//                    numDecoys++;
+//                }
+//            } else if ((int)decoySet.size() >= ringSize) {
+//                for (size_t j = 0; j < decoySet.size(); j++) {
+//                    tx.vin[i].decoys.push_back(decoySet[j]);
+//                    numDecoys++;
+//                    if (numDecoys == ringSize) break;
+//                }
+//            } else {
+//                LogPrintf("\nDont have enough decoys, please wait for around 10 minutes and re-try\n");
+//                return false;
+//            }
+//        }
+//    }
+//    myIndex = rand() % (tx.vin[0].decoys.size() + 1) - 1;
+//
+//    for(size_t i = 0; i < tx.vin.size(); i++) {
+//        COutPoint prevout = tx.vin[i].prevout;
+//        inSpendQueueOutpointsPerSession.push_back(prevout);
+//    }
+//
+//    if (myIndex != -1) {
+//        for(size_t i = 0; i < tx.vin.size(); i++) {
+//            COutPoint prevout = tx.vin[i].prevout;
+//            tx.vin[i].prevout = tx.vin[i].decoys[myIndex];
+//            tx.vin[i].decoys[myIndex] = prevout;
+//        }
+//    }
+    
+    return YES;
+}
+
+- (bool)makeRingCT:(BRTransaction *_Nonnull)wtxNew :(int)ringSize :(NSString * _Nonnull)strFailReason {
+    return YES;
+}
+
+- (bool)IsProofOfStake:(BRMerkleBlock *_Nonnull)block {
+    if (block.txHashes.count <= 1)
+        return NO;
+    
+    UInt256 txHash;
+    [[block.txHashes objectAtIndex:1] getValue:&txHash];
+    BRTransaction *tx = [self transactionForHash:txHash];
+    if (!tx)
+        return NO;
+    
+    if (![tx isCoinStake])
+        return NO;
+    
+    if ([self IsProofOfAudit:block])
+        return NO;
+    
+    return YES;
+}
+
+- (bool)IsProofOfWork:(BRMerkleBlock *_Nonnull)block {
+    if ([self IsProofOfStake:block])
+        return NO;
+    
+    if ([self IsProofOfAudit:block])
+        return NO;
+    
+    return YES;
+}
+
+- (bool)IsProofOfAudit:(BRMerkleBlock *_Nonnull)block {
+    return block.version >= 100;
 }
 
 // true if transaction cannot be immediately spent (i.e. if it or an input tx can be replaced-by-fee)

@@ -44,64 +44,64 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wconditional-uninitialized"
 #include "secp256k1/src/basic-config.h"
-#include "secp256k1/src/secp256k1.c"
+#include "secp256k1/src/secp256k1_2.c"
 #pragma clang diagnostic pop
 
-static secp256k1_context *_ctx = NULL;
+static secp256k1_context2 *_ctx = NULL;
 static dispatch_once_t _ctx_once = 0;
 
 // adds 256bit big endian ints a and b (mod secp256k1 order) and stores the result in a
 // returns true on success
 int BRSecp256k1ModAdd(UInt256 *a, const UInt256 *b)
 {
-    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
-    return secp256k1_ec_privkey_tweak_add(_ctx, (unsigned char *)a, (const unsigned char *)b);
+    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create2(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
+    return secp256k1_ec_privkey_tweak_add2(_ctx, (unsigned char *)a, (const unsigned char *)b);
 }
 
 // multiplies 256bit big endian ints a and b (mod secp256k1 order) and stores the result in a
 // returns true on success
 int BRSecp256k1ModMul(UInt256 *a, const UInt256 *b)
 {
-    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
-    return secp256k1_ec_privkey_tweak_mul(_ctx, (unsigned char *)a, (const unsigned char *)b);
+    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create2(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
+    return secp256k1_ec_privkey_tweak_mul2(_ctx, (unsigned char *)a, (const unsigned char *)b);
 }
 
 // multiplies secp256k1 generator by 256bit big endian int i and stores the result in p
 // returns true on success
 int BRSecp256k1PointGen(BRECPoint *p, const UInt256 *i)
 {
-    secp256k1_pubkey pubkey;
+    secp256k1_pubkey2 pubkey;
     size_t pLen = sizeof(*p);
     
-    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
-    return (secp256k1_ec_pubkey_create(_ctx, &pubkey, (const unsigned char *)i) &&
-            secp256k1_ec_pubkey_serialize(_ctx, (unsigned char *)p, &pLen, &pubkey, SECP256K1_EC_COMPRESSED));
+    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create2(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
+    return (secp256k1_ec_pubkey_create2(_ctx, &pubkey, (const unsigned char *)i) &&
+            secp256k1_ec_pubkey_serialize2(_ctx, (unsigned char *)p, &pLen, &pubkey, SECP256K1_EC_COMPRESSED));
 }
 
 // multiplies secp256k1 generator by 256bit big endian int i and adds the result to ec-point p
 // returns true on success
 int BRSecp256k1PointAdd(BRECPoint *p, const UInt256 *i)
 {
-    secp256k1_pubkey pubkey;
+    secp256k1_pubkey2 pubkey;
     size_t pLen = sizeof(*p);
     
-    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
-    return (secp256k1_ec_pubkey_parse(_ctx, &pubkey, (const unsigned char *)p, sizeof(*p)) &&
-            secp256k1_ec_pubkey_tweak_add(_ctx, &pubkey, (const unsigned char *)i) &&
-            secp256k1_ec_pubkey_serialize(_ctx, (unsigned char *)p, &pLen, &pubkey, SECP256K1_EC_COMPRESSED));
+    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create2(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
+    return (secp256k1_ec_pubkey_parse2(_ctx, &pubkey, (const unsigned char *)p, sizeof(*p)) &&
+            secp256k1_ec_pubkey_tweak_add2(_ctx, &pubkey, (const unsigned char *)i) &&
+            secp256k1_ec_pubkey_serialize2(_ctx, (unsigned char *)p, &pLen, &pubkey, SECP256K1_EC_COMPRESSED));
 }
 
 // multiplies secp256k1 ec-point p by 256bit big endian int i and stores the result in p
 // returns true on success
 int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
 {
-    secp256k1_pubkey pubkey;
+    secp256k1_pubkey2 pubkey;
     size_t pLen = sizeof(*p);
     
-    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
-    return (secp256k1_ec_pubkey_parse(_ctx, &pubkey, (const unsigned char *)p, sizeof(*p)) &&
-            secp256k1_ec_pubkey_tweak_mul(_ctx, &pubkey, (const unsigned char *)i) &&
-            secp256k1_ec_pubkey_serialize(_ctx, (unsigned char *)p, &pLen, &pubkey, SECP256K1_EC_COMPRESSED));
+    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create2(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
+    return (secp256k1_ec_pubkey_parse2(_ctx, &pubkey, (const unsigned char *)p, sizeof(*p)) &&
+            secp256k1_ec_pubkey_tweak_mul2(_ctx, &pubkey, (const unsigned char *)i) &&
+            secp256k1_ec_pubkey_serialize2(_ctx, (unsigned char *)p, &pLen, &pubkey, SECP256K1_EC_COMPRESSED));
 }
 
 @interface BRKey ()
@@ -140,7 +140,7 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
 
 - (instancetype)init
 {
-    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
+    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create2(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
     return (self = [super init]);
 }
 
@@ -150,7 +150,7 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
 
     _seckey = secret;
     _compressed = compressed;
-    return (secp256k1_ec_seckey_verify(_ctx, _seckey.u8)) ? self : nil;
+    return (secp256k1_ec_seckey_verify2(_ctx, _seckey.u8)) ? self : nil;
 }
 
 - (instancetype)initWithRandSecret:(BOOL)compressed
@@ -159,7 +159,7 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
     
     _seckey = [self createRandSecretKey];
     _compressed = compressed;
-    return (secp256k1_ec_seckey_verify(_ctx, _seckey.u8)) ? self : nil;
+    return (secp256k1_ec_seckey_verify2(_ctx, _seckey.u8)) ? self : nil;
 }
 
 -(UInt256)createRandSecretKey
@@ -209,7 +209,7 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
     }
     else if (d.length == sizeof(UInt256)) _seckey = *(const UInt256 *)d.bytes;
     
-    return (secp256k1_ec_seckey_verify(_ctx, _seckey.u8)) ? self : nil;
+    return (secp256k1_ec_seckey_verify2(_ctx, _seckey.u8)) ? self : nil;
 }
 
 - (instancetype)initWithPublicKey:(NSData *)publicKey
@@ -217,11 +217,11 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
     if (publicKey.length != 33 && publicKey.length != 65) return nil;
     if (! (self = [self init])) return nil;
     
-    secp256k1_pubkey pk;
+    secp256k1_pubkey2 pk;
     
     self.pubkey = publicKey;
     self.compressed = (self.pubkey.length == 33) ? YES : NO;
-    return (secp256k1_ec_pubkey_parse(_ctx, &pk, self.publicKey.bytes, self.publicKey.length)) ? self : nil;
+    return (secp256k1_ec_pubkey_parse2(_ctx, &pk, self.publicKey.bytes, self.publicKey.length)) ? self : nil;
 }
 
 - (instancetype)initWithCompactSig:(NSData *)compactSig andMessageDigest:(UInt256)md
@@ -235,11 +235,11 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
     size_t len = pubkey.length;
     int recid = (((uint8_t *)compactSig.bytes)[0] - 27) % 4;
     secp256k1_ecdsa_recoverable_signature s;
-    secp256k1_pubkey pk;
+    secp256k1_pubkey2 pk;
 
     if (secp256k1_ecdsa_recoverable_signature_parse_compact(_ctx, &s, (const uint8_t *)compactSig.bytes + 1, recid) &&
         secp256k1_ecdsa_recover(_ctx, &pk, &s, md.u8) &&
-        secp256k1_ec_pubkey_serialize(_ctx, pubkey.mutableBytes, &len, &pk,
+        secp256k1_ec_pubkey_serialize2(_ctx, pubkey.mutableBytes, &len, &pk,
                                       (self.compressed ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED))) {
         pubkey.length = len;
         _pubkey = pubkey;
@@ -271,10 +271,10 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
     if (self.pubkey.length == 0 && ! uint256_is_zero(_seckey)) {
         NSMutableData *d = [NSMutableData secureDataWithLength:self.compressed ? 33 : 65];
         size_t len = d.length;
-        secp256k1_pubkey pk;
+        secp256k1_pubkey2 pk;
 
-        if (secp256k1_ec_pubkey_create(_ctx, &pk, _seckey.u8)) {
-            secp256k1_ec_pubkey_serialize(_ctx, d.mutableBytes, &len, &pk,
+        if (secp256k1_ec_pubkey_create2(_ctx, &pk, _seckey.u8)) {
+            secp256k1_ec_pubkey_serialize2(_ctx, d.mutableBytes, &len, &pk,
                                           (self.compressed ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED));
             if (len == d.length) self.pubkey = d;
         }
@@ -317,10 +317,10 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
 
     NSMutableData *sig = [NSMutableData dataWithLength:72];
     size_t len = sig.length;
-    secp256k1_ecdsa_signature s;
+    secp256k1_ecdsa_sign2ature2 s;
     
-    if (secp256k1_ecdsa_sign(_ctx, &s, md.u8, _seckey.u8, secp256k1_nonce_function_rfc6979, NULL) &&
-        secp256k1_ecdsa_signature_serialize_der(_ctx, sig.mutableBytes, &len, &s)) {
+    if (secp256k1_ecdsa_sign2(_ctx, &s, md.u8, _seckey.u8, secp256k1_nonce_function_rfc6979, NULL) &&
+        secp256k1_ecdsa_sign2ature2_serialize_der(_ctx, sig.mutableBytes, &len, &s)) {
         sig.length = len;
     }
     else sig = nil;
@@ -330,13 +330,13 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
 
 - (BOOL)verify:(UInt256)md signature:(NSData *)sig
 {
-    secp256k1_pubkey pk;
-    secp256k1_ecdsa_signature s;
+    secp256k1_pubkey2 pk;
+    secp256k1_ecdsa_sign2ature2 s;
     BOOL r = NO;
     
-    if (secp256k1_ec_pubkey_parse(_ctx, &pk, self.publicKey.bytes, self.publicKey.length) &&
-        secp256k1_ecdsa_signature_parse_der(_ctx, &s, sig.bytes, sig.length) &&
-        secp256k1_ecdsa_verify(_ctx, &s, md.u8, &pk) == 1) { // success is 1, all other values are fail
+    if (secp256k1_ec_pubkey_parse2(_ctx, &pk, self.publicKey.bytes, self.publicKey.length) &&
+        secp256k1_ecdsa_sign2ature2_parse_der(_ctx, &s, sig.bytes, sig.length) &&
+        secp256k1_ecdsa_verify2(_ctx, &s, md.u8, &pk) == 1) { // success is 1, all other values are fail
         r = YES;
     }
     
@@ -356,7 +356,7 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
     secp256k1_ecdsa_recoverable_signature s;
     int recid = 0;
     
-    if (secp256k1_ecdsa_sign_recoverable(_ctx, &s, md.u8, _seckey.u8, secp256k1_nonce_function_rfc6979, NULL) &&
+    if (secp256k1_ecdsa_sign2_recoverable(_ctx, &s, md.u8, _seckey.u8, secp256k1_nonce_function_rfc6979, NULL) &&
         secp256k1_ecdsa_recoverable_signature_serialize_compact(_ctx, (uint8_t *)sig.mutableBytes + 1, &recid, &s)) {
         ((uint8_t *)sig.mutableBytes)[0] = 27 + recid + (self.compressed ? 4 : 0);
     }

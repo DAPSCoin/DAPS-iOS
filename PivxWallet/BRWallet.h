@@ -37,6 +37,10 @@ FOUNDATION_EXPORT NSString* _Nonnull const BRWalletBalanceChangedNotification;
 #define MIN_FEE_PER_KB     ((TX_FEE_PER_KB*1000 + 190)/191) // minimum relay fee on a 191byte tx
 #define MAX_FEE_PER_KB     ((100100ULL*1000 + 190)/191) // slightly higher than a 1000bit fee on a 191byte tx
 
+#define MAX_DECOYS_POOL 500
+#define PROBABILITY_NEW_COIN_SELECTED 70
+#define COINBASE_MATURITY 100
+
 typedef void (^TransactionValidityCompletionBlock)(BOOL signedTransaction);
 typedef void (^SeedCompletionBlock)(NSData * _Nullable seed);
 typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amount, _Nullable SeedCompletionBlock seedCompletion);
@@ -54,6 +58,7 @@ typedef struct _BRUTXO {
 
 @class BRTransaction;
 @class BRKey;
+@class BRMerkleBlock;
 @protocol BRKeySequence;
 
 @interface BRWallet : NSObject
@@ -165,11 +170,18 @@ typedef struct _BRUTXO {
 
 // true if the transaction is to me
 - (BOOL)IsTransactionForMe:(BRTransaction * _Nonnull)transaction;
-- (BOOL)RevealTxOutAmount:(BRTransaction *)transaction :(NSUInteger)outIndex :(UInt64 *)amount :(BRKey *)blind;
-- (BOOL)ComputeSharedSec:(BRTransaction *)transaction :(NSUInteger)outIndex :(NSMutableData **)sharedSec;
-- (void)ECDHInfo_Decode:(unsigned char*)encodedMask :(unsigned char*)encodedAmount :(NSData *)sharedSec :(UInt256 *)decodedMask :(UInt64 *)decodedAmount;
-- (void)ECDHInfo_ComputeSharedSec:(const UInt256*)priv :(NSData*)pubKey :(NSMutableData**)sharedSec;
-- (void)ecdhDecode:(unsigned char *)masked :(unsigned char *)amount :(NSData *)sharedSec;
+- (BOOL)RevealTxOutAmount:(BRTransaction * _Nonnull)transaction :(NSUInteger)outIndex :(UInt64 *_Nullable)amount :(BRKey * _Nonnull)blind;
+- (BOOL)ComputeSharedSec:(BRTransaction * _Nonnull)transaction :(NSUInteger)outIndex :(NSMutableData ** _Nonnull)sharedSec;
+- (void)ECDHInfo_Decode:(unsigned char* _Nonnull)encodedMask :(unsigned char* _Nonnull)encodedAmount :(NSData * _Nonnull)sharedSec :(UInt256 * _Nonnull)decodedMask :(UInt64 * _Nonnull)decodedAmount;
+- (void)ECDHInfo_ComputeSharedSec:(const UInt256* _Nonnull)priv :(NSData* _Nonnull)pubKey :(NSMutableData** _Nonnull)sharedSec;
+- (void)ecdhDecode:(unsigned char * _Nonnull)masked :(unsigned char * _Nonnull)amount :(NSData * _Nonnull)sharedSec;
+
+- (bool)makeRingCT:(BRTransaction *_Nonnull)wtxNew :(int)ringSize :(NSString * _Nonnull)strFailReason;
+- (bool)selectDecoysAndRealIndex: (BRTransaction *_Nonnull)tx :(int *_Nonnull)myIndex :(int)ringSize;
+
+- (bool)IsProofOfStake:(BRMerkleBlock *_Nonnull)block;
+- (bool)IsProofOfWork:(BRMerkleBlock *_Nonnull)block;
+- (bool)IsProofOfAudit:(BRMerkleBlock *_Nonnull)block;
 
 // true if transaction cannot be immediately spent (i.e. if it or an input tx can be replaced-by-fee, via BIP125)
 - (BOOL)transactionIsPending:(BRTransaction * _Nonnull)transaction;

@@ -1,11 +1,11 @@
-#ifndef _SECP256K1_RECOVERY_
-# define _SECP256K1_RECOVERY_
+#ifndef SECP256K1_RECOVERY_H
+#define SECP256K1_RECOVERY_H
 
-# include "secp256k1.h"
+#include "secp256k1_2.h"
 
-# ifdef __cplusplus
+#ifdef __cplusplus
 extern "C" {
-# endif
+#endif
 
 /** Opaque data structured that holds a parsed ECDSA signature,
  *  supporting pubkey recovery.
@@ -14,8 +14,8 @@ extern "C" {
  *  guaranteed to be portable between different platforms or versions. It is
  *  however guaranteed to be 65 bytes in size, and can be safely copied/moved.
  *  If you need to convert to a format suitable for storage or transmission, use
- *  the secp256k1_ecdsa_signature_serialize_* and
- *  secp256k1_ecdsa_signature_parse_* functions.
+ *  the secp256k1_ecdsa_sign2ature2_serialize_* and
+ *  secp256k1_ecdsa_sign2ature2_parse_* functions.
  *
  *  Furthermore, it is guaranteed that identical signatures (including their
  *  recoverability) will have identical representation, so they can be
@@ -34,7 +34,7 @@ typedef struct {
  *        recid:   the recovery id (0, 1, 2 or 3)
  */
 SECP256K1_API int secp256k1_ecdsa_recoverable_signature_parse_compact(
-    const secp256k1_context* ctx,
+    const secp256k1_context2* ctx,
     secp256k1_ecdsa_recoverable_signature* sig,
     const unsigned char *input64,
     int recid
@@ -47,8 +47,8 @@ SECP256K1_API int secp256k1_ecdsa_recoverable_signature_parse_compact(
  *  In:  sigin:  a pointer to a recoverable signature (cannot be NULL).
  */
 SECP256K1_API int secp256k1_ecdsa_recoverable_signature_convert(
-    const secp256k1_context* ctx,
-    secp256k1_ecdsa_signature* sig,
+    const secp256k1_context2* ctx,
+    secp256k1_ecdsa_sign2ature2* sig,
     const secp256k1_ecdsa_recoverable_signature* sigin
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
 
@@ -61,7 +61,7 @@ SECP256K1_API int secp256k1_ecdsa_recoverable_signature_convert(
  *  In:   sig:      a pointer to an initialized signature object (cannot be NULL)
  */
 SECP256K1_API int secp256k1_ecdsa_recoverable_signature_serialize_compact(
-    const secp256k1_context* ctx,
+    const secp256k1_context2* ctx,
     unsigned char *output64,
     int *recid,
     const secp256k1_ecdsa_recoverable_signature* sig
@@ -78,12 +78,12 @@ SECP256K1_API int secp256k1_ecdsa_recoverable_signature_serialize_compact(
  *           noncefp:pointer to a nonce generation function. If NULL, secp256k1_nonce_function_default is used
  *           ndata:  pointer to arbitrary data used by the nonce generation function (can be NULL)
  */
-SECP256K1_API int secp256k1_ecdsa_sign_recoverable(
-    const secp256k1_context* ctx,
+SECP256K1_API int secp256k1_ecdsa_sign2_recoverable(
+    const secp256k1_context2* ctx,
     secp256k1_ecdsa_recoverable_signature *sig,
     const unsigned char *msg32,
     const unsigned char *seckey,
-    secp256k1_nonce_function noncefp,
+    secp256k1_nonce_function2 noncefp,
     const void *ndata
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4);
 
@@ -97,14 +97,14 @@ SECP256K1_API int secp256k1_ecdsa_sign_recoverable(
  *           msg32:      the 32-byte message hash assumed to be signed (cannot be NULL)
  */
 SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ecdsa_recover(
-    const secp256k1_context* ctx,
-    secp256k1_pubkey *pubkey,
+    const secp256k1_context2* ctx,
+    secp256k1_pubkey2 *pubkey,
     const secp256k1_ecdsa_recoverable_signature *sig,
     const unsigned char *msg32
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4);
 
-# ifdef __cplusplus
+#ifdef __cplusplus
 }
-# endif
-
 #endif
+
+#endif /* SECP256K1_RECOVERY_H */

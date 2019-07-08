@@ -304,7 +304,6 @@ totalTransactions:(uint32_t)totalTransactions hashes:(NSData *)hashes flags:(NSD
     return txHashes;
 }
 
-
 UInt256 setCompact(int32_t nCompact)
 {
     int nSize = nCompact >> 24;
