@@ -104,6 +104,11 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
             secp256k1_ec_pubkey_serialize2(_ctx, (unsigned char *)p, &pLen, &pubkey, SECP256K1_EC_COMPRESSED));
 }
 
+secp256k1_context2* BRSecp256k1_Context() {
+    dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create2(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
+    return _ctx;
+}
+
 @interface BRKey ()
 
 @property (nonatomic, assign) UInt256 seckey;

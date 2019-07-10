@@ -24,9 +24,8 @@
 //  THE SOFTWARE.
 
 #import <Foundation/Foundation.h>
-
-typedef union _UInt256 UInt256;
-typedef union _UInt160 UInt160;
+#include "secp256k1_2.h"
+#include "IntTypes.h"
 
 typedef struct {
     uint8_t p[33];
@@ -51,6 +50,8 @@ int BRSecp256k1PointAdd(BRECPoint * _Nonnull p, const UInt256 * _Nonnull i);
 // multiplies secp256k1 ec-point p by 256bit big endian int i and stores the result in p
 // returns true on success
 int BRSecp256k1PointMul(BRECPoint * _Nonnull p, const UInt256 * _Nonnull i);
+
+secp256k1_context2* BRSecp256k1_Context();
 
 @interface BRKey : NSObject
 

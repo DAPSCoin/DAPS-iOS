@@ -25,6 +25,7 @@
 
 #import <Foundation/Foundation.h>
 #import "DSShapeshiftEntity+CoreDataClass.h"
+#import "IntTypes.h"
 
 #define TX_FEE_PER_KB        10000ULL    // standard tx fee per kb of tx size, rounded up to nearest kb
 #define TX_FEE_PER_INPUT     10000ULL    // standard ix fee per input
@@ -39,7 +40,18 @@
 
 #define IX_PREVIOUS_CONFIRMATIONS_NEEDED       6   // number of previous confirmations needed in ix inputs
 
-typedef union _UInt256 UInt256;
+//typedef union _UInt256 UInt256;
+
+typedef struct _BRUTXO {
+    UInt256 hash;
+    unsigned long n; // use unsigned long instead of uint32_t to avoid trailing struct padding (for NSValue comparisons)
+} BRUTXO;
+
+#define brutxo_obj(o) [NSValue value:&(o) withObjCType:@encode(BRUTXO)]
+#define brutxo_data(o) [NSData dataWithBytes:&((struct { uint32_t u[256/32 + 1]; }) {\
+o.hash.u32[0], o.hash.u32[1], o.hash.u32[2], o.hash.u32[3],\
+o.hash.u32[4], o.hash.u32[5], o.hash.u32[6], o.hash.u32[7],\
+CFSwapInt32HostToLittle((uint32_t)o.n) }) length:sizeof(UInt256) + sizeof(uint32_t)]
 
 
 enum {
@@ -54,14 +66,14 @@ enum {
 @interface BRTransaction : NSObject
 
 @property (nonatomic, readonly) NSArray *inputAddresses;
-@property (nonatomic, readonly) NSArray *inputHashes;
-@property (nonatomic, readonly) NSArray *inputIndexes;
+@property (nonatomic, readonly) NSMutableArray *inputHashes;
+@property (nonatomic, readonly) NSMutableArray *inputIndexes;
 @property (nonatomic, readonly) NSArray *inputScripts;
 @property (nonatomic, readonly) NSArray *inputSignatures;
 @property (nonatomic, readonly) NSArray *inputSequences;
 @property (nonatomic, readonly) NSArray *inputEncryptionKey;
-@property (nonatomic, readonly) NSArray *inputKeyImage;
-@property (nonatomic, readonly) NSArray *inputDecoys;
+@property (nonatomic, readonly) NSMutableArray *inputKeyImage;
+@property (nonatomic, readonly) NSMutableArray *inputDecoys;
 @property (nonatomic, readonly) NSArray *inputMasternodeStealthAddress;
 @property (nonatomic, readonly) NSArray *inputS;
 @property (nonatomic, readonly) NSArray *inputR;
@@ -72,8 +84,9 @@ enum {
 @property (nonatomic, readonly) NSArray *outputTxPriv;
 @property (nonatomic, readonly) NSArray *outputTxPub;
 @property (nonatomic, readonly) NSArray *outputMaskValue;
+@property (nonatomic, readonly) NSMutableArray *outputInMemoryRawBind;
 @property (nonatomic, readonly) NSArray *outputMasternodeStealthAddress;
-@property (nonatomic, readonly) NSArray *outputCommitment;
+@property (nonatomic, readonly) NSMutableArray *outputCommitment;
 
 @property (nonatomic, assign) BOOL isInstant;
 
@@ -87,10 +100,11 @@ enum {
 @property (nonatomic, assign) uint64_t nTxFee;
 @property (nonatomic, assign) UInt256 c;
 @property (nonatomic, strong) NSMutableArray *S;
-@property (nonatomic, strong) NSData *ntxFeeKeyImage;
+@property (nonatomic, strong) NSMutableData *ntxFeeKeyImage;
 
 @property (nonatomic, assign) uint32_t lockTime;
 @property (nonatomic, assign) uint32_t blockHeight;
+@property (nonatomic, assign) UInt256 txSignatureHash;
 @property (nonatomic, assign) NSTimeInterval timestamp; // time interval since refrence date, 00:00:00 01/01/01 GMT
 @property (nonatomic, readonly) size_t size; // size in bytes if signed, or estimated size assuming compact pubkey sigs
 @property (nonatomic, readonly) uint64_t standardFee;
@@ -119,6 +133,7 @@ sequence:(uint32_t)sequence;
 - (BOOL)signWithPrivateKeys:(NSArray *)privateKeys;
 - (BOOL)isCoinBase;
 - (BOOL)isCoinStake;
+- (BOOL)isCoinAudit;
 
 - (NSString*)shapeshiftOutboundAddress;
 - (NSString*)shapeshiftOutboundAddressForceScript;

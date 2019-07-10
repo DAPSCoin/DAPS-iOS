@@ -37,7 +37,9 @@
 #import "NSData+Bitcoin.h"
 #import "NSMutableData+Bitcoin.h"
 #import "NSManagedObject+Sugar.h"
-
+#include "secp256k1_bulletproofs.h"
+#include "secp256k1_commitment.h"
+#include "secp256k1_generator.h"
 // chain position of first tx output address that appears in chain
 static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     for (NSString *addr in tx.outputAddresses) {
@@ -66,6 +68,8 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 @property (nonatomic, strong) NSMutableDictionary *amountMaps;
 @property (nonatomic, strong) NSMutableDictionary *blindMaps;
 @property (nonatomic, strong) NSMutableArray *coinbaseDecoysPool;
+@property (nonatomic, strong) NSMutableArray *userDecoysPool;
+@property (nonatomic, strong) NSMutableArray *inSpendQueueOutpointsPerSession;
 
 @property (nonatomic, strong) BRKey *viewKey, *spendKey;
 
@@ -99,6 +103,8 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     self.viewKey = nil;
     self.spendKey = nil;
     self.coinbaseDecoysPool = [NSMutableArray array];
+    self.userDecoysPool = [NSMutableArray array];
+    self.inSpendQueueOutpointsPerSession = [NSMutableArray array];
     
     [self.moc performBlockAndWait:^{
         [BRAddressEntity setContext:self.moc];
@@ -1125,6 +1131,42 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     return NO;
 }
 
+- (bool)generateKeyImage:(NSMutableData* _Nonnull)scriptPubKey :(NSMutableData* _Nonnull)img {
+    unsigned char pubData[65];
+    for (int i = 0; i < self.allKeys.count; i++) {
+        BRKey *item = (BRKey *)self.allKeys[i];
+        
+        NSMutableData *script = [NSMutableData data];
+        NSData *pub = item.publicKey;
+        
+        [script appendScriptPubKey:pub];
+        if ([script isEqualToData:scriptPubKey]) {
+            UInt256 hash = pub.SHA256_2;
+            pubData[0] = *(unsigned char*)pub.bytes;
+            memcpy(pubData + 1, &hash, 32);
+            
+            NSMutableData *newPubKey = [NSMutableData secureDataWithCapacity:65];
+            [newPubKey appendBytes:pubData length:33];
+            //P' = Hs(aR)G+B, a = view private, B = spend pub, R = tx public key
+            unsigned char ki[65];
+            //copy newPubKey into ki
+            memcpy(ki, newPubKey.bytes, newPubKey.length);
+            while (!BRSecp256k1PointMul((BRECPoint*)ki, item.secretKey)) {
+                hash = newPubKey.SHA256_2;
+                pubData[0] = *(unsigned char*)newPubKey.bytes;
+                memcpy(pubData + 1, &hash, 32);
+                [newPubKey replaceBytesInRange:NSMakeRange(0, 33) withBytes:pubData length:33];
+                memcpy(ki, newPubKey.bytes, newPubKey.length);
+            }
+            
+            [img appendBytes:ki length:33];
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
 - (bool)selectDecoysAndRealIndex: (BRTransaction *_Nonnull)tx :(int *_Nonnull)myIndex :(int)ringSize {
     if (self.coinbaseDecoysPool.count <= 14) {
         for (int i = [self blockHeight] - COINBASE_MATURITY; i > 0; i--) {
@@ -1167,10 +1209,12 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     //Choose decoys
     
     *myIndex = -1;
+    NSMutableArray *decoys;
     for(size_t i = 0; i < tx.inputHashes.count; i++) {
         //generate key images and choose decoys
         BRTransaction *txPrev;
         UInt256 hashBlock;
+        decoys = (NSMutableArray*)tx.inputDecoys[i];
         
         txPrev = [BRPeerManager sharedInstance].publishedTx[tx.inputHashes[i]];
         if (!txPrev)
@@ -1178,96 +1222,590 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         if (!txPrev)
             return NO;
         
+        NSMutableData *ki = [NSMutableData secureDataWithCapacity:65];
+        if (![self generateKeyImage:txPrev.outputScripts[[tx.inputIndexes[i] unsignedIntValue]] :ki]) {
+            NSLog(@"Cannot generate key image");
+            return NO;
+        } else {
+            tx.inputKeyImage[i] = ki;
+        }
         
+        int numDecoys = 0;
+        if ([txPrev isCoinAudit] || [txPrev isCoinBase] || [txPrev isCoinStake]) {
+            if ((int)self.coinbaseDecoysPool.count >= ringSize * 5) {
+                while (numDecoys < ringSize) {
+                    bool duplicated = NO;
+                    NSValue *outpoint = self.coinbaseDecoysPool[rand() % self.coinbaseDecoysPool.count];
+                    for (size_t d = 0; d < decoys.count; d++) {
+                        if ([decoys[d] isEqualToValue:outpoint]) {
+                            duplicated = YES;
+                            break;
+                        }
+                    }
+                    
+                    if (duplicated) {
+                        continue;
+                    }
+                    
+                    [decoys addObject:outpoint];
+                    numDecoys++;
+                }
+            } else if ((int)self.coinbaseDecoysPool.count >= ringSize) {
+                for (size_t j = 0; j < self.coinbaseDecoysPool.count; j++) {
+                    [decoys addObject:self.coinbaseDecoysPool[j]];
+                    numDecoys++;
+                    if (numDecoys == ringSize) break;
+                }
+            } else {
+                NSLog(@"Don't have enough decoys, please wait for around 10 minutes and re-try");
+                return NO;
+            }
+        } else {
+            NSMutableArray *decoySet = [NSMutableArray arrayWithArray:self.userDecoysPool];
+            [decoySet addObjectsFromArray:self.coinbaseDecoysPool];
+            if ((int)decoySet.count >= ringSize * 5) {
+                while(numDecoys < ringSize) {
+                    bool duplicated = NO;
+                    NSValue *outpoint = decoySet[rand() % decoySet.count];
+                    for (size_t d = 0; d < decoys.count; d++) {
+                        if ([decoys[d] isEqualToValue:outpoint]) {
+                            duplicated = true;
+                            break;
+                        }
+                    }
+                    if (duplicated) {
+                        continue;
+                    }
+                    [decoys addObject:outpoint];
+                    numDecoys++;
+                }
+            } else if ((int)decoySet.count >= ringSize) {
+                for (size_t j = 0; j < decoySet.count; j++) {
+                    [decoys addObject:decoySet[j]];
+                    numDecoys++;
+                    if (numDecoys == ringSize) break;
+                }
+            } else {
+                NSLog(@"Don't have enough decoys, please wait for around 10 minutes and re-try");
+                return NO;
+            }
+        }
+    }
+    
+    decoys = (NSMutableArray*)tx.inputDecoys[0];
+    *myIndex = rand() % (decoys.count + 1) - 1;
+    
+    for (size_t i = 0; i < tx.inputHashes.count; i++) {
+        BRUTXO o;
+        [tx.inputHashes[i] getValue:&o.hash];
+        o.n = [tx.inputIndexes[i] unsignedIntValue];
+        [self.inSpendQueueOutpointsPerSession addObject:brutxo_obj(o)];
     }
 
-//        CKeyImage ki;
-//        if (!generateKeyImage(txPrev.vout[tx.vin[i].prevout.n].scriptPubKey, ki)) {
-//            LogPrintf("Cannot generate key image");
-//            return false;
-//        } else {
-//            tx.vin[i].keyImage = ki;
-//        }
-//
-//        pendingKeyImages.push_back(ki.GetHex());
-//        int numDecoys = 0;
-//        if (txPrev.IsCoinAudit() || txPrev.IsCoinBase() || txPrev.IsCoinStake()) {
-//            if ((int)coinbaseDecoysPool.size() >= ringSize * 5) {
-//                while(numDecoys < ringSize) {
-//                    bool duplicated = false;
-//                    COutPoint outpoint = coinbaseDecoysPool[rand() % coinbaseDecoysPool.size()];
-//                    for (size_t d = 0; d < tx.vin[i].decoys.size(); d++) {
-//                        if (tx.vin[i].decoys[d] == outpoint) {
-//                            duplicated = true;
-//                            break;
-//                        }
-//                    }
-//                    if (duplicated) {
-//                        continue;
-//                    }
-//                    tx.vin[i].decoys.push_back(outpoint);
-//                    numDecoys++;
-//                }
-//            } else if ((int)coinbaseDecoysPool.size() >= ringSize) {
-//                for (size_t j = 0; j < coinbaseDecoysPool.size(); j++) {
-//                    tx.vin[i].decoys.push_back(coinbaseDecoysPool[j]);
-//                    numDecoys++;
-//                    if (numDecoys == ringSize) break;
-//                }
-//            } else {
-//                LogPrintf("\nDont have enough decoys, please wait for around 10 minutes and re-try\n");
-//                return false;
-//            }
-//        } else {
-//            std::vector<COutPoint> decoySet = userDecoysPool;
-//            decoySet.insert(decoySet.end(), coinbaseDecoysPool.begin(), coinbaseDecoysPool.end());
-//            if ((int)decoySet.size() >= ringSize * 5) {
-//                while(numDecoys < ringSize) {
-//                    bool duplicated = false;
-//                    COutPoint outpoint = decoySet[rand() % decoySet.size()];
-//                    for (size_t d = 0; d < tx.vin[i].decoys.size(); d++) {
-//                        if (tx.vin[i].decoys[d] == outpoint) {
-//                            duplicated = true;
-//                            break;
-//                        }
-//                    }
-//                    if (duplicated) {
-//                        continue;
-//                    }
-//                    tx.vin[i].decoys.push_back(outpoint);
-//                    numDecoys++;
-//                }
-//            } else if ((int)decoySet.size() >= ringSize) {
-//                for (size_t j = 0; j < decoySet.size(); j++) {
-//                    tx.vin[i].decoys.push_back(decoySet[j]);
-//                    numDecoys++;
-//                    if (numDecoys == ringSize) break;
-//                }
-//            } else {
-//                LogPrintf("\nDont have enough decoys, please wait for around 10 minutes and re-try\n");
-//                return false;
-//            }
-//        }
-//    }
-//    myIndex = rand() % (tx.vin[0].decoys.size() + 1) - 1;
-//
-//    for(size_t i = 0; i < tx.vin.size(); i++) {
-//        COutPoint prevout = tx.vin[i].prevout;
-//        inSpendQueueOutpointsPerSession.push_back(prevout);
-//    }
-//
-//    if (myIndex != -1) {
-//        for(size_t i = 0; i < tx.vin.size(); i++) {
-//            COutPoint prevout = tx.vin[i].prevout;
-//            tx.vin[i].prevout = tx.vin[i].decoys[myIndex];
-//            tx.vin[i].decoys[myIndex] = prevout;
-//        }
-//    }
+    if (*myIndex != -1) {
+        for(size_t i = 0; i < tx.inputHashes.count; i++) {
+            decoys = (NSMutableArray*)tx.inputDecoys[i];
+            BRUTXO o;
+            [tx.inputHashes[i] getValue:&o.hash];
+            o.n = [tx.inputIndexes[i] unsignedIntValue];
+            
+            BRUTXO temp;
+            [decoys[*myIndex] getValue:&temp];
+            tx.inputHashes[i] = uint256_obj(temp.hash);
+            tx.inputIndexes[i] = @(temp.n);
+            
+            decoys[*myIndex] = brutxo_obj(o);
+        }
+    }
+    
+    return YES;
+}
+
+- (bool)findCorrespondingPrivateKey:(BRTransaction *)tx :(int)outIndex :(BRKey**)key
+{
+    for (int i = 0; i < self.allKeys.count; i++) {
+        *key = (BRKey *)self.allKeys[i];
+        NSMutableData *script = [NSMutableData data];
+        [script appendScriptPubKey:(*key).publicKey];
+        if ([script isEqualToData:tx.outputScripts[outIndex]])
+            return YES;
+    }
+    
+    return NO;
+}
+
+- (bool)CreateCommitment:(unsigned char*)blind :(uint64_t)val :(NSMutableData *)commitment
+{
+    secp256k1_context2 *both = BRSecp256k1_Context();
+    secp256k1_pedersen_commitment commitmentD;
+    if (!secp256k1_pedersen_commit(both, &commitmentD, blind, val, &secp256k1_generator_const_h, &secp256k1_generator_const_g)) {
+        return false;
+    }
+    unsigned char output[33];
+    if (!secp256k1_pedersen_commitment_serialize(both, output, &commitmentD)) {
+        return false;
+    }
+    
+    [commitment appendBytes:output length:33];
+    return YES;
+}
+
+- (bool)PointHashingSuccessively:(NSData *)pk :(unsigned char*)tweak :(unsigned char*)out {
+    unsigned char pubData[65];
+    UInt256 hash = pk.SHA256_2;
+    pubData[0] = *(unsigned char*)pk.bytes;
+    memcpy(pubData + 1, &hash, 32);
+    NSMutableData *newPubKey = [NSMutableData dataWithBytes:pubData length:33];
+    memcpy(out, newPubKey.bytes, newPubKey.length);
+    while (!BRSecp256k1PointMul((BRECPoint*)out, (UInt256*)tweak)) {
+        hash = newPubKey.SHA256_2;
+        pubData[0] = *(unsigned char*)newPubKey.bytes;
+        memcpy(pubData + 1, &hash, 32);
+        [newPubKey replaceBytesInRange:NSMakeRange(0, 33) withBytes:pubData length:33];
+        memcpy(out, newPubKey.bytes, newPubKey.length);
+    }
     
     return YES;
 }
 
 - (bool)makeRingCT:(BRTransaction *_Nonnull)wtxNew :(int)ringSize :(NSString * _Nonnull)strFailReason {
+    int myIndex;
+    if (![self selectDecoysAndRealIndex:wtxNew :&myIndex :ringSize]) {
+        return NO;
+    }
+    
+    secp256k1_context2 *both = BRSecp256k1_Context();
+    for (int i = 0; i < wtxNew.outputAmounts.count; i++) {
+        if ([wtxNew.outputAmounts[i] unsignedLongLongValue] == 0 && wtxNew.outputScripts[i] == [NSNull null])
+            continue;
+        
+        secp256k1_pedersen_commitment commitment;
+        NSData *secret = (NSData *)wtxNew.outputInMemoryRawBind[i];
+        BRKey *blind = [BRKey keyWithSecret:*(UInt256 *)secret.bytes compressed:YES];
+        if (!secp256k1_pedersen_commit(both, &commitment, (unsigned char*)blind.secretKey,
+                                       [wtxNew.outputAmounts[i] unsignedLongLongValue],
+                                       &secp256k1_generator_const_h, &secp256k1_generator_const_g)) {
+            NSLog(@"Cannot commit commitment");
+            return NO;
+        }
+        unsigned char output[33];
+        if (!secp256k1_pedersen_commitment_serialize(both, output, &commitment)) {
+            NSLog(@"Cannot serialize commitment");
+            return NO;
+        }
+        [wtxNew.outputCommitment removeAllObjects];
+        NSMutableData *commitmentData = [NSMutableData dataWithBytes:output length:33];
+        [wtxNew.outputCommitment addObject:commitmentData];
+    }
+    
+    if (wtxNew.inputHashes.count >= 30) {
+        NSLog(@"Failed due to transaction size too large");
+        return NO;
+    }
+
+    const size_t MAX_VIN = 32;
+    const size_t MAX_DECOYS = 13;    //padding 1 for safety reasons
+    const size_t MAX_VOUT = 5;
+
+    NSMutableArray *myInputCommiments = [NSMutableArray array];
+    int totalCommits = wtxNew.inputHashes.count + wtxNew.outputAmounts.count;
+    int npositive = wtxNew.inputHashes.count;
+    unsigned char myBlinds[MAX_VIN + MAX_VIN + MAX_VOUT + 1][32];    //myBlinds is used for compuitng additional private key in the ring =
+    memset(myBlinds, 0, (MAX_VIN + MAX_VIN + MAX_VOUT + 1) * 32);
+    const unsigned char *bptr[MAX_VIN + MAX_VIN + MAX_VOUT + 1];
+    //all in pubkeys + an additional public generated from commitments
+    unsigned char allInPubKeys[MAX_VIN + 1][MAX_DECOYS + 1][33];
+    unsigned char allKeyImages[MAX_VIN + 1][33];
+    unsigned char allInCommitments[MAX_VIN][MAX_DECOYS + 1][33];
+    unsigned char allOutCommitments[MAX_VOUT][33];
+
+    int myBlindsIdx = 0;
+    //additional member in the ring = Sum of All input public keys + sum of all input commitments - sum of all output commitments
+    for (size_t j = 0; j < wtxNew.inputHashes.count; j++) {
+        BRUTXO myOutpoint;
+        NSMutableArray *decoys = (NSMutableArray*)wtxNew.inputDecoys[j];
+        if (myIndex == -1) {
+            [wtxNew.inputHashes[j] getValue:&myOutpoint.hash];
+            myOutpoint.n = [wtxNew.inputIndexes[j] unsignedIntValue];
+        } else {
+            [decoys[myIndex] getValue:&myOutpoint];
+        }
+        
+        BRTransaction *inTx = [self transactionForHash:myOutpoint.hash];
+        BRKey *tmp;
+        if (![self findCorrespondingPrivateKey:inTx :myOutpoint.n :&tmp]) {
+            NSLog(@"Cannot find private key corresponding to the input");
+            return NO;
+        }
+        memcpy(&myBlinds[myBlindsIdx][0], tmp.secretKey, 32);
+        bptr[myBlindsIdx] = &myBlinds[myBlindsIdx][0];
+        myBlindsIdx++;
+    }
+
+    //Collecting input commitments blinding factors
+    for (int i = 0; i < wtxNew.inputHashes.count; i++) {
+        BRUTXO myOutpoint;
+        NSMutableArray *decoys = (NSMutableArray*)wtxNew.inputDecoys[i];
+        if (myIndex == -1) {
+            [wtxNew.inputHashes[i] getValue:&myOutpoint.hash];
+            myOutpoint.n = [wtxNew.inputIndexes[i] unsignedIntValue];
+        } else {
+            [decoys[myIndex] getValue:&myOutpoint];
+        }
+        
+        BRTransaction *inTx = [self transactionForHash:myOutpoint.hash];
+        secp256k1_pedersen_commitment inCommitment;
+        if (!secp256k1_pedersen_commitment_parse(both, &inCommitment, [inTx.outputCommitment[myOutpoint.n] bytes])) {
+            NSLog(@"Cannot parse the commitment for inputs");
+            return NO;
+        }
+        
+        [myInputCommiments addObject:[NSValue value:&inCommitment withObjCType:@encode(secp256k1_pedersen_commitment)]];
+        uint64_t tempAmount;
+        BRKey *tmp = nil;
+        [self RevealTxOutAmount:inTx :myOutpoint.n :&tempAmount :tmp];
+        memcpy(&myBlinds[myBlindsIdx][0], tmp.secretKey, 32);
+        
+        //verify input commitments
+        NSMutableData *recomputedCommitment = [NSMutableData data];
+        if (![self CreateCommitment:&myBlinds[myBlindsIdx][0] :tempAmount :recomputedCommitment]) {
+            NSLog(@"Cannot create pedersen commitment");
+            return NO;
+        }
+        
+        if (![recomputedCommitment isEqualToData:inTx.outputCommitment[myOutpoint.n]]) {
+            NSLog(@"Input commitments are not correct");
+            return NO;
+        }
+        
+        bptr[myBlindsIdx] = myBlinds[myBlindsIdx];
+        myBlindsIdx++;
+    }
+
+    //collecting output commitment blinding factors
+    for (int i = 0; i < wtxNew.outputAmounts.count; i++) {
+        if ([wtxNew.outputAmounts[i] unsignedLongLongValue] == 0 &&
+            [wtxNew.outputScripts[i] length] == 0)
+            continue;
+        
+        NSData *secret = (NSData *)wtxNew.outputInMemoryRawBind[i];
+        if (secret.length != 0)
+            memcpy(&myBlinds[myBlindsIdx][0], secret.bytes, 32);
+        bptr[myBlindsIdx] = &myBlinds[myBlindsIdx][0];
+        myBlindsIdx++;
+    }
+    
+    BRKey *newBlind = [BRKey keyWithRandSecret:YES];
+    memcpy(&myBlinds[myBlindsIdx][0], newBlind.secretKey, 32);
+    bptr[myBlindsIdx] = &myBlinds[myBlindsIdx][0];
+
+    int myRealIndex = 0;
+    if (myIndex != -1) {
+        myRealIndex = myIndex + 1;
+    }
+
+    int PI = myRealIndex;
+    unsigned char SIJ[MAX_VIN + 1][MAX_DECOYS + 1][32];
+    unsigned char LIJ[MAX_VIN + 1][MAX_DECOYS + 1][33];
+    unsigned char RIJ[MAX_VIN + 1][MAX_DECOYS + 1][33];
+    unsigned char ALPHA[MAX_VIN + 1][32];
+    unsigned char AllPrivKeys[MAX_VIN + 1][32];
+
+    //generating LIJ and RIJ at PI: LIJ[j][PI], RIJ[j][PI], j=0..wtxNew.vin.size()
+    for (size_t j = 0; j < wtxNew.inputHashes.count; j++) {
+        BRUTXO myOutpoint;
+        NSMutableArray *decoys = (NSMutableArray*)wtxNew.inputDecoys[j];
+        if (myIndex == -1) {
+            [wtxNew.inputHashes[j] getValue:&myOutpoint.hash];
+            myOutpoint.n = [wtxNew.inputIndexes[j] unsignedIntValue];
+        } else {
+            [decoys[myIndex] getValue:&myOutpoint];
+        }
+
+        BRTransaction *inTx = [self transactionForHash:myOutpoint.hash];
+        BRKey *tempPk;
+
+        //looking for private keys corresponding to my real inputs
+        if (![self findCorrespondingPrivateKey:inTx :myOutpoint.n :&tempPk]) {
+            NSLog(@"Cannot find corresponding private key");
+            return NO;
+        }
+        memcpy(AllPrivKeys[j], tempPk.secretKey, 32);
+        //copying corresponding key images
+        memcpy(allKeyImages[j], [wtxNew.inputKeyImage[j] bytes], 33);
+        //copying corresponding in public keys
+        NSData *tempPubKey = tempPk.publicKey;
+        memcpy(allInPubKeys[j][PI], tempPubKey.bytes, 33);
+
+        memcpy(allInCommitments[j][PI], [inTx.outputCommitment[myOutpoint.n] bytes], 33);
+        BRKey *alpha = [BRKey keyWithRandSecret:YES];
+        memcpy(ALPHA[j], alpha.secretKey, 32);
+        NSData *LIJ_PI = alpha.publicKey;
+        memcpy(LIJ[j][PI], LIJ_PI.bytes, 33);
+        [self PointHashingSuccessively:tempPubKey :(unsigned char*)alpha.secretKey :RIJ[j][PI]];
+    }
+
+    //computing additional input pubkey and key images
+    //additional private key = sum of all existing private keys + sum of all blinds in - sum of all blind outs
+    unsigned char outSum[32];
+    if (!secp256k1_pedersen_blind_sum(both, outSum, (const unsigned char * const *)bptr, npositive + totalCommits, 2 * npositive)) {
+        NSLog(@"Cannot compute pedersen blind sum");
+        return NO;
+    }
+    memcpy(myBlinds[myBlindsIdx], outSum, 32);
+    memcpy(AllPrivKeys[wtxNew.inputHashes.count], outSum, 32);
+    UInt256 keyData;
+    memcpy(&keyData, myBlinds[myBlindsIdx], 32);
+    BRKey *additionalPkKey = [BRKey keyWithSecret:keyData compressed:YES];
+    
+    NSData *additionalPubKey = additionalPkKey.publicKey;
+    memcpy(allInPubKeys[wtxNew.inputHashes.count][PI], additionalPubKey.bytes, 33);
+    [self PointHashingSuccessively:additionalPubKey :myBlinds[myBlindsIdx] :allKeyImages[wtxNew.inputHashes.count]];
+
+    //verify that additional public key = sum of wtx.vin.size() real public keys + sum of wtx.vin.size() commitments - sum of wtx.vout.size() commitments - commitment to zero of transction fee
+
+    //filling LIJ & RIJ at [j][PI]
+    BRKey *alpha_additional = [BRKey keyWithRandSecret:YES];
+    memcpy(ALPHA[wtxNew.inputHashes.count], alpha_additional.secretKey, 32);
+    NSData *LIJ_PI_additional = alpha_additional.publicKey;
+    memcpy(LIJ[wtxNew.inputHashes.count][PI], LIJ_PI_additional.bytes, 33);
+    [self PointHashingSuccessively:additionalPubKey :(unsigned char*)alpha_additional.secretKey :RIJ[wtxNew.inputHashes.count][PI]];
+
+    //Initialize SIJ except S[..][PI]
+    for (int i = 0; i < wtxNew.inputHashes.count + 1; i++) {
+        for (int j = 0; j < [wtxNew.inputDecoys[0] count] + 1; j++) {
+            if (j != PI) {
+                BRKey *randGen = [BRKey keyWithRandSecret:YES];
+                memcpy(SIJ[i][j], randGen.secretKey, 32);
+            }
+        }
+    }
+
+    //extract all public keys
+    for (int i = 0; i < wtxNew.inputHashes.count; i++) {
+        NSMutableArray *decoysForIn = [NSMutableArray array];
+        BRUTXO o;
+        [wtxNew.inputHashes[i] getValue:&o.hash];
+        o.n = [wtxNew.inputIndexes[i] unsignedIntValue];
+        [decoysForIn addObject:brutxo_obj(o)];
+
+        NSMutableArray *decoys = (NSMutableArray*)wtxNew.inputDecoys[i];
+        for(int j = 0; j < [wtxNew.inputDecoys[i] length]; j++) {
+            [decoys[j] getValue:&o];
+            [decoysForIn addObject:brutxo_obj(o)];
+        }
+        for (int j = 0; j < [wtxNew.inputDecoys[0] length] + 1; j++) {
+            if (j != PI) {
+                BRTransaction *txPrev;
+                [decoysForIn[j] getValue:&o];
+                txPrev = [self transactionForHash:o.hash];
+                if (!txPrev)
+                    return NO;
+                
+                NSMutableData *extractedPub = [NSMutableData data];
+                [extractedPub appendPubKey:txPrev.outputScripts[o.n]];
+                if (extractedPub.length == 0) {
+                    NSLog(@"Cannot extract public key from script pubkey");
+                    return NO;
+                }
+
+                memcpy(allInPubKeys[i][j], extractedPub.bytes, 33);
+                memcpy(allInCommitments[i][j], [txPrev.outputCommitment[o.n] bytes], 33);
+            }
+        }
+    }
+
+    secp256k1_pedersen_commitment allInCommitmentsPacked[MAX_VIN][MAX_DECOYS + 1];
+    secp256k1_pedersen_commitment allOutCommitmentsPacked[MAX_VOUT + 1]; //+1 for tx fee
+
+    for (size_t i = 0; i < wtxNew.outputAmounts.count; i++) {
+        memcpy(&(allOutCommitments[i][0]), [wtxNew.outputCommitment[i] bytes], 33);
+        if (!secp256k1_pedersen_commitment_parse(both, &allOutCommitmentsPacked[i], allOutCommitments[i])) {
+            NSLog(@"Cannot parse the commitment for inputs");
+            return NO;
+        }
+    }
+
+    //commitment to tx fee, blind = 0
+    unsigned char txFeeBlind[32];
+    memset(txFeeBlind, 0, 32);
+    if (!secp256k1_pedersen_commit(both, &allOutCommitmentsPacked[wtxNew.outputAmounts.count], txFeeBlind, wtxNew.nTxFee, &secp256k1_generator_const_h, &secp256k1_generator_const_g)) {
+        NSLog(@"Cannot parse the commitment for transaction fee");
+        return NO;
+    }
+
+    //filling the additional pubkey elements for decoys: allInPubKeys[wtxNew.vin.size()][..]
+    //allInPubKeys[wtxNew.vin.size()][j] = sum of allInPubKeys[..][j] + sum of allInCommitments[..][j] - sum of allOutCommitments
+    const secp256k1_pedersen_commitment *outCptr[MAX_VOUT + 1];
+    for(size_t i = 0; i < wtxNew.outputAmounts.count + 1; i++) {
+        outCptr[i] = &allOutCommitmentsPacked[i];
+    }
+    secp256k1_pedersen_commitment inPubKeysToCommitments[MAX_VIN][MAX_DECOYS + 1];
+    for(int i = 0; i < wtxNew.inputHashes.count; i++) {
+        for (int j = 0; j < [wtxNew.inputDecoys[0] count] + 1; j++) {
+            secp256k1_pedersen_serialized_pubkey_to_commitment(allInPubKeys[i][j], 33, &inPubKeysToCommitments[i][j]);
+        }
+    }
+
+    for (int j = 0; j < [wtxNew.inputDecoys[0] count] + 1; j++) {
+        if (j != PI) {
+            const secp256k1_pedersen_commitment *inCptr[MAX_VIN * 2];
+            for (int k = 0; k < wtxNew.inputHashes.count; k++) {
+                if (!secp256k1_pedersen_commitment_parse(both, &allInCommitmentsPacked[k][j], allInCommitments[k][j])) {
+                    NSLog(@"Cannot parse the commitment for inputs");
+                    return NO;
+                }
+                inCptr[k] = &allInCommitmentsPacked[k][j];
+            }
+            for (size_t k = wtxNew.inputHashes.count; k < 2*wtxNew.inputHashes.count; k++) {
+                inCptr[k] = &inPubKeysToCommitments[k - wtxNew.inputHashes.count][j];
+            }
+            secp256k1_pedersen_commitment out;
+            size_t length;
+            //convert allInPubKeys to pederson commitment to compute sum of all in public keys
+            if (!secp256k1_pedersen_commitment_sum(both, inCptr, wtxNew.inputHashes.count*2, outCptr, wtxNew.outputAmounts.count + 1, &out))
+                NSLog(@"Cannot compute sum of commitment");
+            if (!secp256k1_pedersen_commitment_to_serialized_pubkey(&out, allInPubKeys[wtxNew.inputHashes.count][j], &length))
+                NSLog(@"Cannot covert from commitment to public key");
+        }
+    }
+
+    //Computing C
+    int PI_interator = PI + 1; //PI_interator: PI + 1 .. wtxNew.vin[0].decoys.size() + 1 .. PI
+    //unsigned char SIJ[wtxNew.vin.size() + 1][wtxNew.vin[0].decoys.size() + 1][32];
+    //unsigned char LIJ[wtxNew.vin.size() + 1][wtxNew.vin[0].decoys.size() + 1][33];
+    //unsigned char RIJ[wtxNew.vin.size() + 1][wtxNew.vin[0].decoys.size() + 1][33];
+    unsigned char CI[MAX_DECOYS + 1][32];
+    unsigned char tempForHash[2 * (MAX_VIN + 1) * 33 + 32];
+    unsigned char* tempForHashPtr = tempForHash;
+    for (size_t i = 0; i < wtxNew.inputHashes.count + 1; i++) {
+        memcpy(tempForHashPtr, &LIJ[i][PI][0], 33);
+        tempForHashPtr += 33;
+        memcpy(tempForHashPtr, &RIJ[i][PI][0], 33);
+        tempForHashPtr += 33;
+    }
+    UInt256 ctsHash = wtxNew.txSignatureHash;
+    memcpy(tempForHashPtr, &ctsHash, 32);
+
+    if (PI_interator == [wtxNew.inputDecoys[0] count] + 1) PI_interator = 0;
+    NSMutableData *hashData = [NSMutableData dataWithBytes:tempForHash length:2 * (wtxNew.inputHashes.count + 1) * 33 + 32];
+    UInt256 temppi1 = hashData.SHA256_2;
+    if (PI_interator == 0) {
+        memcpy(CI[0], &temppi1, 32);
+    } else {
+        memcpy(CI[PI_interator], &temppi1, 32);
+    }
+
+    while (PI_interator != PI) {
+        for (int j = 0; j < wtxNew.inputHashes.count + 1; j++) {
+            //compute LIJ
+            unsigned char CP[33];
+            memcpy(CP, allInPubKeys[j][PI_interator], 33);
+            if (!BRSecp256k1PointMul((BRECPoint*)CP, (UInt256*)CI[PI_interator])) {
+                NSLog(@"Cannot compute LIJ for ring signature in secp256k1_ec_pubkey_tweak_mul");
+                return NO;
+            }
+            if (!BRSecp256k1PointAdd((BRECPoint*)CP, (UInt256*)SIJ[j][PI_interator])) {
+                NSLog(@"Cannot compute LIJ for ring signature in secp256k1_ec_pubkey_tweak_add");
+                return NO;
+            }
+            memcpy(LIJ[j][PI_interator], CP, 33);
+
+            //compute RIJ
+            //first compute CI * I
+            memcpy(RIJ[j][PI_interator], allKeyImages[j], 33);
+            if (!BRSecp256k1PointMul((BRECPoint*)RIJ[j][PI_interator], (UInt256*)CI[PI_interator])) {
+                NSLog(@"Cannot compute RIJ for ring signature in secp256k1_ec_pubkey_tweak_mul");
+                return NO;
+            }
+
+            //compute S*H(P)
+            unsigned char SHP[33];
+            NSMutableData *tempP = [NSMutableData dataWithBytes:allInPubKeys[j][PI_interator] length:33];
+            [self PointHashingSuccessively:tempP :SIJ[j][PI_interator] :SHP];
+            //convert shp into commitment
+            secp256k1_pedersen_commitment SHP_commitment;
+            secp256k1_pedersen_serialized_pubkey_to_commitment(SHP, 33, &SHP_commitment);
+
+            //convert CI*I into commitment
+            secp256k1_pedersen_commitment cii_commitment;
+            secp256k1_pedersen_serialized_pubkey_to_commitment(RIJ[j][PI_interator], 33, &cii_commitment);
+
+            const secp256k1_pedersen_commitment *twoElements[2];
+            twoElements[0] = &SHP_commitment;
+            twoElements[1] = &cii_commitment;
+
+            secp256k1_pedersen_commitment sum;
+            if (!secp256k1_pedersen_commitment_sum_pos(both, twoElements, 2, &sum)) {
+                NSLog(@"Cannot compute sum of commitments");
+                return NO;
+            }
+            
+            size_t tempLength;
+            if (!secp256k1_pedersen_commitment_to_serialized_pubkey(&sum, RIJ[j][PI_interator], &tempLength)) {
+                NSLog(@"Cannot compute two elements and serialize it to pubkey");
+            }
+        }
+
+        PI_interator++;
+        if (PI_interator == [wtxNew.inputDecoys[0] count] + 1) PI_interator = 0;
+
+        int prev, ciIdx;
+        if (PI_interator == 0) {
+            prev = [wtxNew.inputDecoys[0] count];
+            ciIdx = 0;
+        } else {
+            prev = PI_interator - 1;
+            ciIdx = PI_interator;
+        }
+
+        tempForHashPtr = tempForHash;
+        for (int i = 0; i < wtxNew.inputHashes.count + 1; i++) {
+            memcpy(tempForHashPtr, LIJ[i][prev], 33);
+            tempForHashPtr += 33;
+            memcpy(tempForHashPtr, RIJ[i][prev], 33);
+            tempForHashPtr += 33;
+        }
+        memcpy(tempForHashPtr, &ctsHash, 32);
+        NSMutableData *ciHashTmpData = [NSMutableData dataWithBytes:tempForHash length:2 * (wtxNew.inputHashes.count + 1) * 33 + 32];
+        UInt256 ciHashTmp = ciHashTmpData.SHA256_2;
+        memcpy(CI[ciIdx], &ciHashTmp, 32);
+    }
+
+    //compute S[j][PI] = alpha_j - c_pi * x_j, x_j = private key corresponding to key image I
+    for (size_t j = 0; j < wtxNew.inputHashes.count + 1; j++) {
+        unsigned char cx[32];
+        memcpy(cx, CI[PI], 32);
+        if (!BRSecp256k1ModMul((UInt256*)cx, (UInt256*)AllPrivKeys[j])) {
+            NSLog(@"Cannot compute EC mul");
+            return NO;
+        }
+        
+        const unsigned char *sumArray[2];
+        sumArray[0] = ALPHA[j];
+        sumArray[1] = cx;
+        if (!secp256k1_pedersen_blind_sum(both, SIJ[j][PI], sumArray, 2, 1)) {
+            NSLog(@"Cannot compute pedersen blind sum");
+            return NO;
+        }
+    }
+    UInt256 c_temp = wtxNew.c;
+    memcpy(&c_temp, CI[0], 32);
+    wtxNew.c = c_temp;
+    
+    //i for decoy index => PI
+    for (int i = 0; i < [wtxNew.inputDecoys[0] count] + 1; i++) {
+        NSMutableArray *S_column = [NSMutableArray array];
+        for (int j = 0; j < wtxNew.inputHashes.count + 1; j++) {
+            UInt256 t;
+            memcpy(&t, SIJ[j][i], 32);
+            [S_column addObject:uint256_obj(t)];
+        }
+        [wtxNew.S addObject:S_column];
+    }
+
+    wtxNew.ntxFeeKeyImage = [NSMutableData dataWithBytes:allKeyImages[wtxNew.inputHashes.count] length:33];
+    
     return YES;
 }
 

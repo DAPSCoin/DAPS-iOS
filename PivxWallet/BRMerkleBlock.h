@@ -24,6 +24,7 @@
 //  THE SOFTWARE.
 
 #import <Foundation/Foundation.h>
+#include "IntTypes.h"
 
 #define BLOCK_UNKNOWN_HEIGHT      INT32_MAX
 #define DGW_PAST_BLOCKS_MIN 24
@@ -32,8 +33,6 @@
 /** Zerocoin starting block height */
 #define TESTNET_ZEROCOIN_STARTING_BLOCK_HEIGHT = 201564;
 #define MAINNET_ZEROCOIN_STARTING_BLOCK_HEIGHT = 863787;
-
-typedef union _UInt256 UInt256;
 
 @interface BRMerkleBlock : NSObject
 

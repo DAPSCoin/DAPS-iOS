@@ -24,7 +24,7 @@
 //  THE SOFTWARE.
 
 #import <Foundation/Foundation.h>
-
+#include "IntTypes.h"
 
 #if DASH_TESTNET
 #define DASH_STANDARD_PORT          51474
@@ -74,9 +74,6 @@
 #define REJECT_NONSTANDARD 0x40 // not mined/relayed because it is "non-standard" (type or version unknown by server)
 #define REJECT_DUST        0x41 // one or more output amounts are below the 'dust' threshold
 #define REJECT_LOWFEE      0x42 // transaction does not have enough fee/priority to be relayed or mined
-
-typedef union _UInt256 UInt256;
-typedef union _UInt128 UInt128;
 
 @class BRPeer, BRTransaction, BRMerkleBlock;
 
