@@ -11,7 +11,7 @@
 #include "scalar.h"
 
 #include "include/secp256k1_bulletproofs.h"
-#include "modules/commitment/main_impl.h"
+#include "../commitment/main_impl.h"
 
 typedef struct {
     int special;
@@ -62,12 +62,12 @@ struct secp256k1_bulletproof_generators {
     secp256k1_ge *blinding_gen;
 };
 
-#include "modules/bulletproofs/parser_impl.h"
-#include "modules/bulletproofs/inner_product_impl.h"
-#include "modules/bulletproofs/circuit_compress_impl.h"
-#include "modules/bulletproofs/circuit_impl.h"
-#include "modules/bulletproofs/rangeproof_impl.h"
-#include "modules/bulletproofs/util.h"
+#include "parser_impl.h"
+#include "inner_product_impl.h"
+#include "circuit_compress_impl.h"
+#include "circuit_impl.h"
+#include "rangeproof_impl.h"
+#include "util.h"
 
 secp256k1_bulletproof_generators *secp256k1_bulletproof_generators_create(const secp256k1_context2 *ctx, const secp256k1_generator *blinding_gen, size_t n) {
     secp256k1_bulletproof_generators *ret;

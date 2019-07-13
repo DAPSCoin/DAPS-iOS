@@ -7,8 +7,8 @@
 #ifndef SECP256K1_MODULE_BULLETPROOF_CIRCUIT_IMPL
 #define SECP256K1_MODULE_BULLETPROOF_CIRCUIT_IMPL
 
-#include "modules/bulletproofs/inner_product_impl.h"
-#include "modules/bulletproofs/util.h"
+#include "inner_product_impl.h"
+#include "util.h"
 #include "group.h"
 
 #include <stdlib.h>

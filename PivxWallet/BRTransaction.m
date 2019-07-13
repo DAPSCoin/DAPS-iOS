@@ -49,6 +49,35 @@
 
 @end
 
+void initTxOut(BRTxOut *txout) {
+    txout->nValue = 0;
+    txout->scriptPubKey = [NSMutableData data];
+    txout->nRounds = 0;
+    txout->txPriv = [NSMutableData data];
+    txout->txPub = [NSMutableData data];
+    memset(&txout->mask_amount, 0, sizeof(UInt256));
+    memset(&txout->mask_mask, 0, sizeof(UInt256));
+    memset(&txout->mask_hashOfKey, 0, sizeof(UInt256));
+    txout->mask_inMemoryRawBind = [BRKey keyWithRandSecret:YES];
+    txout->masternodeStealthAddress = [NSMutableData data];
+    txout->commitment = [NSMutableData data];
+}
+
+int getSerializeSize(BRTxOut *txout) {
+    int size = 0;
+    size += sizeof(txout->nValue);
+    size += txout->scriptPubKey.length;
+    size += txout->txPriv.length;
+    size += txout->txPub.length;
+    size += sizeof(UInt256);
+    size += sizeof(UInt256);
+    size += sizeof(UInt256);
+    size += txout->masternodeStealthAddress.length;
+    size += txout->commitment.length;
+    
+    return size;
+}
+
 @implementation BRTransaction
 
 + (instancetype)transactionWithMessage:(NSData *)message
@@ -293,6 +322,50 @@ outputAddresses:(NSArray *)addresses outputAmounts:(NSArray *)amounts
     _lockTime = TX_LOCKTIME;
     _blockHeight = TX_UNCONFIRMED;
     return self;
+}
+
+- (void)inputInit {
+    //vin
+    [self.hashes removeAllObjects];
+    [self.indexes removeAllObjects];
+    [self.inScripts removeAllObjects];
+    [self.signatures removeAllObjects];
+    [self.sequences removeAllObjects];
+    [self.in_encryptionKey removeAllObjects];
+    [self.in_keyImage removeAllObjects];
+    [self.in_decoys removeAllObjects];
+    [self.in_masternodeStealthAddress removeAllObjects];
+    [self.in_s removeAllObjects];
+    [self.in_R removeAllObjects];
+}
+
+- (void)outputInit {
+    //vout
+    [self.amounts removeAllObjects];
+    [self.addresses removeAllObjects];
+    [self.outScripts removeAllObjects];
+    [self.out_txPriv removeAllObjects];
+    [self.out_txPub removeAllObjects];
+    [self.out_maskValue removeAllObjects];
+    [self.out_masternodeStealthAddress removeAllObjects];
+    [self.out_commitment removeAllObjects];
+    [self.out_InMemoryRawBind removeAllObjects];
+}
+
+- (void)addOutput:(BRTxOut *)txout
+{
+    [self.amounts addObject:@(txout->nValue)];
+    [self.outScripts addObject:txout->scriptPubKey];
+    [self.out_txPriv addObject:txout->txPriv];
+    [self.out_txPub addObject:txout->txPub];
+    NSMutableArray *mask = [NSMutableArray array];
+    [mask addObject:uint256_obj(txout->mask_amount)];
+    [mask addObject:uint256_obj(txout->mask_mask)];
+    [mask addObject:uint256_obj(txout->mask_hashOfKey)];
+    [self.out_maskValue addObject:mask];
+    [self.out_masternodeStealthAddress addObject:txout->masternodeStealthAddress];
+    [self.out_commitment addObject:txout->commitment];
+    [self.out_InMemoryRawBind addObject:txout->mask_inMemoryRawBind];
 }
 
 - (NSMutableArray *)inputHashes

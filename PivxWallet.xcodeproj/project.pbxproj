@@ -157,6 +157,7 @@
 		E335451322D3409400CC98FE /* pedersen-192.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544F822D3409400CC98FE /* pedersen-192.assn */; };
 		E335451422D3409400CC98FE /* pedersen-384.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544F922D3409400CC98FE /* pedersen-384.circ */; };
 		E335451522D3409400CC98FE /* pedersen-384.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544FA22D3409400CC98FE /* pedersen-384.assn */; };
+		E3E948CE22D7A24000A6A941 /* secp256k1_2.c in Sources */ = {isa = PBXBuildFile; fileRef = E3E948CD22D7A24000A6A941 /* secp256k1_2.c */; };
 		E893E93EC6CB2E63C28D68E6 /* Pods_pivxwallet.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52C978F753836B477A7FE473 /* Pods_pivxwallet.framework */; };
 		F3C1E5F2065BE81CE87C70EB /* Pods_pivxwallet.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 738E43B4B5613FDC48BBDAE6 /* Pods_pivxwallet.framework */; };
 		FB021E4F1E42EB5F00D17638 /* NSAttributedString+Attachments.m in Sources */ = {isa = PBXBuildFile; fileRef = FB021E4E1E42EB5F00D17638 /* NSAttributedString+Attachments.m */; };
@@ -401,7 +402,6 @@
 		758B16511AA9ADC4002C65DD /* scalar_8x32.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = scalar_8x32.h; sourceTree = "<group>"; };
 		758B16521AA9ADC4002C65DD /* scalar_8x32_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = scalar_8x32_impl.h; sourceTree = "<group>"; };
 		758B16531AA9ADC4002C65DD /* scalar_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = scalar_impl.h; sourceTree = "<group>"; };
-		758B16541AA9ADC4002C65DD /* secp256k1.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = secp256k1.c; sourceTree = "<group>"; };
 		758B16581AA9ADC4002C65DD /* util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = util.h; sourceTree = "<group>"; };
 		758DBD0C1980634900389E2A /* BRTxDetailViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BRTxDetailViewController.h; sourceTree = "<group>"; };
 		758DBD0D1980634900389E2A /* BRTxDetailViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BRTxDetailViewController.m; sourceTree = "<group>"; };
@@ -539,6 +539,7 @@
 		E335453222D340C300CC98FE /* main_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = main_impl.h; sourceTree = "<group>"; };
 		E335453622D3496900CC98FE /* secp256k1_2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_2.h; sourceTree = "<group>"; };
 		E34725F322C41CEC0050348A /* PIVX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = PIVX.entitlements; path = pivxwallet/PIVX.entitlements; sourceTree = "<group>"; };
+		E3E948CD22D7A24000A6A941 /* secp256k1_2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = secp256k1_2.c; sourceTree = "<group>"; };
 		F3767C71363A17C2937E2034 /* Pods-pivxwallet.testnet.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-pivxwallet.testnet.xcconfig"; path = "Pods/Target Support Files/Pods-pivxwallet/Pods-pivxwallet.testnet.xcconfig"; sourceTree = "<group>"; };
 		FB021E4D1E42EB5F00D17638 /* NSAttributedString+Attachments.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSAttributedString+Attachments.h"; sourceTree = "<group>"; };
 		FB021E4E1E42EB5F00D17638 /* NSAttributedString+Attachments.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSAttributedString+Attachments.m"; sourceTree = "<group>"; };
@@ -912,6 +913,7 @@
 		758B162A1AA9ADC4002C65DD /* src */ = {
 			isa = PBXGroup;
 			children = (
+				E3E948CD22D7A24000A6A941 /* secp256k1_2.c */,
 				75F2E0BB1BE5599100EAE861 /* basic-config.h */,
 				758B16301AA9ADC4002C65DD /* ecdsa.h */,
 				758B16311AA9ADC4002C65DD /* ecdsa_impl.h */,
@@ -940,7 +942,6 @@
 				758B16531AA9ADC4002C65DD /* scalar_impl.h */,
 				757E40C41DEBDD6B00D1CE57 /* scalar_low_impl.h */,
 				757E40C51DEBDD6B00D1CE57 /* scalar_low.h */,
-				758B16541AA9ADC4002C65DD /* secp256k1.c */,
 				758B16581AA9ADC4002C65DD /* util.h */,
 			);
 			path = src;
@@ -1786,6 +1787,7 @@
 				757BE7E6192C1FF70061CB20 /* BRWelcomeViewController.m in Sources */,
 				757BE7E9192D4E880061CB20 /* BRSeedViewController.m in Sources */,
 				2B4838CD1FE21666001C8D09 /* DonationController.swift in Sources */,
+				E3E948CE22D7A24000A6A941 /* secp256k1_2.c in Sources */,
 				752E28E719234DA200DB5A3C /* NSData+Bitcoin.m in Sources */,
 				FB9CC2711F8E27B80079309F /* DWGenerateViewController.m in Sources */,
 				220128D31C753C670001CAC1 /* BRSocketHelpers.c in Sources */,

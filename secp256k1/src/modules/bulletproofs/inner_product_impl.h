@@ -10,8 +10,8 @@
 #include "group.h"
 #include "scalar.h"
 
-#include "modules/bulletproofs/main_impl.h"
-#include "modules/bulletproofs/util.h"
+#include "main_impl.h"
+#include "util.h"
 
 /* Number of scalars that should remain at the end of a recursive proof. The paper
  * uses 2, by reducing the scalars as far as possible. We stop one recursive step

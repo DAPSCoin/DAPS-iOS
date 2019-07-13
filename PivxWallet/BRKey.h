@@ -25,6 +25,7 @@
 
 #import <Foundation/Foundation.h>
 #include "secp256k1_2.h"
+#include "secp256k1_bulletproofs.h"
 #include "IntTypes.h"
 
 typedef struct {
@@ -52,6 +53,8 @@ int BRSecp256k1PointAdd(BRECPoint * _Nonnull p, const UInt256 * _Nonnull i);
 int BRSecp256k1PointMul(BRECPoint * _Nonnull p, const UInt256 * _Nonnull i);
 
 secp256k1_context2* BRSecp256k1_Context();
+secp256k1_scratch_space2* BRSecp256k1_Scratch();
+secp256k1_bulletproof_generators* BRSecp256k1_Generator();
 
 @interface BRKey : NSObject
 

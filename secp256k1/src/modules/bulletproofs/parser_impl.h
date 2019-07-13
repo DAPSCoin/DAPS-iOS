@@ -10,7 +10,7 @@
 #include <ctype.h>
 #include <stdio.h>
 
-#include "modules/bulletproofs/circuit_compress_impl.h"
+#include "circuit_compress_impl.h"
 
 static size_t secp256k1_bulletproof_encoding_width(size_t n) {
     if (n < 0x100) return 1;

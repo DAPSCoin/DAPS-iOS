@@ -7,7 +7,7 @@
 #ifndef SECP256K1_MODULE_BULLETPROOF_CIRCUIT_COMPRESS_IMPL
 #define SECP256K1_MODULE_BULLETPROOF_CIRCUIT_COMPRESS_IMPL
 
-#include "modules/bulletproofs/main_impl.h"
+#include "main_impl.h"
 
 typedef struct {
     secp256k1_scalar c_sum;

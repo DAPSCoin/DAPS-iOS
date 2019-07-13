@@ -44,11 +44,15 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #pragma clang diagnostic ignored "-Wconditional-uninitialized"
 #include "secp256k1/src/basic-config.h"
-#include "secp256k1/src/secp256k1_2.c"
+#include "secp256k1_recovery.h"
 #pragma clang diagnostic pop
 
 static secp256k1_context2 *_ctx = NULL;
+static secp256k1_scratch_space2 *scratch = NULL;
+static secp256k1_bulletproof_generators *generator = NULL;
 static dispatch_once_t _ctx_once = 0;
+static dispatch_once_t _scratch_once = 0;
+static dispatch_once_t _generator_once = 0;
 
 // adds 256bit big endian ints a and b (mod secp256k1 order) and stores the result in a
 // returns true on success
@@ -107,6 +111,16 @@ int BRSecp256k1PointMul(BRECPoint *p, const UInt256 *i)
 secp256k1_context2* BRSecp256k1_Context() {
     dispatch_once(&_ctx_once, ^{ _ctx = secp256k1_context_create2(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY); });
     return _ctx;
+}
+
+secp256k1_scratch_space2* BRSecp256k1_Scratch() {
+    dispatch_once(&_scratch_once, ^{ scratch = secp256k1_scratch_space_create(BRSecp256k1_Context(), 1024 * 1024 * 2048); });
+    return scratch;
+}
+
+secp256k1_bulletproof_generators* BRSecp256k1_Generator() {
+    dispatch_once(&_generator_once, ^{ generator = secp256k1_bulletproof_generators_create(BRSecp256k1_Context(), &secp256k1_generator_const_g, 64 * 1024); });
+    return generator;
 }
 
 @interface BRKey ()

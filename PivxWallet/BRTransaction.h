@@ -40,12 +40,33 @@
 
 #define IX_PREVIOUS_CONFIRMATIONS_NEEDED       6   // number of previous confirmations needed in ix inputs
 
-//typedef union _UInt256 UInt256;
+@class BRKey;
 
 typedef struct _BRUTXO {
     UInt256 hash;
     unsigned long n; // use unsigned long instead of uint32_t to avoid trailing struct padding (for NSValue comparisons)
 } BRUTXO;
+
+typedef struct _BRTxOut {
+    uint64_t nValue; //should always be 0
+    NSMutableData *scriptPubKey;
+    int nRounds;
+    //txPriv is optional and will be used for PoS blocks to incentivize masternodes
+    //and fullnodes will use it to verify whether the reward is really sent to the registered address of masternodes
+    NSMutableData *txPriv;
+    NSMutableData *txPub;
+    //ECDH encoded value for the amount: the idea is the use the shared secret and a key derivation function to
+    //encode the value and the mask so that only the sender and the receiver of the tx output can decode the encoded amount
+    UInt256 mask_amount;
+    UInt256 mask_mask;   //blinding factor, this is encoded throug ECDH before sending to the receiver
+    UInt256 mask_hashOfKey;
+    BRKey *mask_inMemoryRawBind;
+    NSMutableData *masternodeStealthAddress;  //will be clone from the tx having 1000000 daps output
+    NSMutableData *commitment;  //Commitment C = mask * G + amount * H, H = Hp(G), Hp = toHashPoint
+} BRTxOut;
+
+void initTxOut(BRTxOut *txout);
+int getSerializeSize(BRTxOut *txout);
 
 #define brutxo_obj(o) [NSValue value:&(o) withObjCType:@encode(BRUTXO)]
 #define brutxo_data(o) [NSData dataWithBytes:&((struct { uint32_t u[256/32 + 1]; }) {\
@@ -89,6 +110,7 @@ enum {
 @property (nonatomic, readonly) NSMutableArray *outputCommitment;
 
 @property (nonatomic, assign) BOOL isInstant;
+@property (nonatomic, assign) BOOL fFromMe;
 
 @property (nonatomic, assign) UInt256 txHash;
 @property (nonatomic, assign) uint32_t version;
@@ -96,11 +118,14 @@ enum {
 @property (nonatomic, assign) uint8_t hasPaymentID;
 @property (nonatomic, assign) uint64_t paymentID;
 @property (nonatomic, assign) uint32_t txType;
-@property (nonatomic, strong) NSData *bulletProofs;
+@property (nonatomic, strong) NSMutableData *bulletProofs;
 @property (nonatomic, assign) uint64_t nTxFee;
 @property (nonatomic, assign) UInt256 c;
 @property (nonatomic, strong) NSMutableArray *S;
 @property (nonatomic, strong) NSMutableData *ntxFeeKeyImage;
+@property (nonatomic, strong) BRKey *txPrivM;
+
+@property (nonatomic, assign) BOOL fTimeReceivedIsTxTime;
 
 @property (nonatomic, assign) uint32_t lockTime;
 @property (nonatomic, assign) uint32_t blockHeight;
@@ -134,6 +159,9 @@ sequence:(uint32_t)sequence;
 - (BOOL)isCoinBase;
 - (BOOL)isCoinStake;
 - (BOOL)isCoinAudit;
+- (void)inputInit;
+- (void)outputInit;
+- (void)addOutput:(BRTxOut *)txout;
 
 - (NSString*)shapeshiftOutboundAddress;
 - (NSString*)shapeshiftOutboundAddressForceScript;

@@ -7,8 +7,8 @@
 #ifndef SECP256K1_MODULE_BULLETPROOF_RANGEPROOF_IMPL
 #define SECP256K1_MODULE_BULLETPROOF_RANGEPROOF_IMPL
 
-#include "modules/bulletproofs/inner_product_impl.h"
-#include "modules/bulletproofs/util.h"
+#include "inner_product_impl.h"
+#include "util.h"
 #include "group.h"
 
 #define MAX_NBITS	64

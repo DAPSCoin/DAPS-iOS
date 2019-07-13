@@ -35,6 +35,7 @@
 #import "BRKeySequence.h"
 #import "BRMerkleBlock.h"
 #import "NSData+Bitcoin.h"
+#import "NSString+Bitcoin.h"
 #import "NSMutableData+Bitcoin.h"
 #import "NSManagedObject+Sugar.h"
 #include "secp256k1_bulletproofs.h"
@@ -105,6 +106,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     self.coinbaseDecoysPool = [NSMutableArray array];
     self.userDecoysPool = [NSMutableArray array];
     self.inSpendQueueOutpointsPerSession = [NSMutableArray array];
+    self.txPrivKeys = [NSMutableArray array];
     
     [self.moc performBlockAndWait:^{
         [BRAddressEntity setContext:self.moc];
@@ -1806,6 +1808,431 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 
     wtxNew.ntxFeeKeyImage = [NSMutableData dataWithBytes:allKeyImages[wtxNew.inputHashes.count] length:33];
     
+    return YES;
+}
+
+- (bool)generateBulletProofAggregate:(BRTransaction *)tx
+{
+    unsigned char proof[2000];
+    size_t len = 2000;
+    const size_t MAX_VOUT = 5;
+    unsigned char nonce[32];
+    SecRandomCopyBytes(kSecRandomDefault, 32, nonce);
+    unsigned char blinds[MAX_VOUT][32];
+    memset(blinds, 0, tx.outputAmounts.count * 32);
+    uint64_t values[MAX_VOUT];
+    size_t i = 0;
+    const unsigned char *blind_ptr[MAX_VOUT];
+    if (tx.outputAmounts.count > MAX_VOUT) return false;
+    for (i = 0; i < tx.outputAmounts.count; i++) {
+        memcpy(&blinds[i][0], [tx.outputInMemoryRawBind[i] bytes], 32);
+        blind_ptr[i] = blinds[i];
+        values[i] = [tx.outputAmounts[i] unsignedLongLongValue];
+    }
+    int ret = secp256k1_bulletproof_rangeproof_prove(BRSecp256k1_Context(), BRSecp256k1_Scratch(), BRSecp256k1_Generator(), proof, &len, values, NULL, blind_ptr, tx.outputAmounts.count, &secp256k1_generator_const_h, 64, nonce, NULL, 0);
+
+    tx.bulletProofs = [NSMutableData dataWithBytes:proof length:len];
+    return ret;
+}
+
+- (BOOL)DecodeStealthAddress:(NSString*)stealth :(NSMutableData*)pubViewKey :(NSMutableData*)pubSpendKey :(BOOL*)hasPaymentID :(uint64_t*)paymentID {
+    if (stealth.length != 99 && stealth.length != 110) {
+        return NO;
+    }
+    NSMutableData *raw = [NSMutableData data];
+    size_t i = 0;
+    while (i < stealth.length) {
+        int npos = 11;
+        NSString *sub = [stealth substringWithRange:NSMakeRange(i, npos)];
+        NSMutableData *decoded = (NSMutableData *)sub.base58ToData;
+        
+        if ((decoded.length == 8 && i + 11 < stealth.length - 1) || (decoded.length == 7 && i + 11 == stealth.length - 1)) {
+            [raw appendBytes:decoded.bytes length:decoded.length];
+        } else if ([sub characterAtIndex:0] == '1') {
+            //find the last padding character
+            size_t lastPad = 0;
+            while (lastPad < sub.length - 1) {
+                if ([sub characterAtIndex:lastPad + 1] != '1') {
+                    break;
+                }
+                lastPad++;
+            }
+            //check whether '1' is padding
+            int padIdx = lastPad;
+            while (padIdx >= 0 && [sub characterAtIndex:padIdx] == '1') {
+                NSString *str_without_pads = [sub substringWithRange:NSMakeRange(padIdx + 1, sub.length - padIdx - 1)];
+                decoded = (NSMutableData *)str_without_pads.base58ToData;
+                if ((decoded.length == 8 && i + 11 < stealth.length) || (decoded.length == 7 && i + 11 == stealth.length)) {
+                    [raw appendBytes:decoded.bytes length:decoded.length];
+                    break;
+                } else {
+                    decoded.length = 0;
+                }
+            }
+            padIdx--;
+            if (decoded.length == 0) {
+                //cannot decode this block of stealth address
+                return NO;
+            }
+        } else {
+            return NO;
+        }
+        
+        i = i + npos;
+    }
+
+    if (raw.length != 71 && raw.length != 79) {
+        return NO;
+    }
+    *hasPaymentID = NO;
+    if (raw.length == 79) {
+        *hasPaymentID = YES;
+    }
+
+    //Check checksum
+    UInt256 h = raw.SHA256_2;
+    unsigned char *h_begin = (unsigned char *)&h;
+    unsigned char *p_raw = (unsigned char*)raw.bytes + raw.length - 4;
+    if (memcmp(h_begin, p_raw, 4) != 0) {
+        return NO;
+    }
+
+    NSMutableData *vchSpend = [NSMutableData data];
+    NSMutableData *vchView = [NSMutableData data];
+    [vchSpend appendBytes:(unsigned char*)raw.bytes + 1 length:33];
+    [vchView appendBytes:(unsigned char*)raw.bytes + 34 length:33];
+    if (*hasPaymentID) {
+        memcpy((char*)paymentID, (unsigned char*)raw.bytes + 67, sizeof(*paymentID));
+    }
+    
+    [pubSpendKey appendBytes:vchSpend.bytes length:vchSpend.length];
+    [pubViewKey appendBytes:vchView.bytes length:vchView.length];
+    
+    return YES;
+}
+
+- (BOOL)computeStealthDestination :(BRKey *)secret :(NSData*)pubViewKey :(NSData*)pubSpendKey :(NSMutableData*)des {
+    //generate transaction destination: P = Hs(rA)G+B, A = view pub, B = spend pub, r = secret
+    //1. Compute rA
+    unsigned char rA[65];
+    unsigned char B[65];
+    memcpy(rA, pubViewKey.bytes, pubViewKey.length);
+    if (!BRSecp256k1PointMul((BRECPoint*)rA, secret.secretKey)) {
+        return NO;
+    }
+    NSMutableData *temp = [NSMutableData dataWithBytes:rA length:pubViewKey.length];
+    UInt256 HS = temp.SHA256_2;
+
+    memcpy(B, pubSpendKey.bytes, pubSpendKey.length);
+
+    if (!BRSecp256k1PointAdd((BRECPoint*)B, &HS)) {
+        NSLog(@"Cannot compute stealth destination");
+        return NO;
+    }
+    
+    [des appendBytes:B length:pubSpendKey.length];
+    return YES;
+}
+
+- (void)ecdhEncode:(unsigned char *)unmasked :(unsigned char*)amount :(NSMutableData *)sharedSec
+{
+    UInt256 sharedSec1 = sharedSec.SHA256_2;
+    NSMutableData *tempData = [NSMutableData dataWithBytes:&sharedSec1 length:32];
+    UInt256 sharedSec2 = tempData.SHA256_2;
+    
+    for (int i = 0;i < 32; i++) {
+        unmasked[i] ^= *((unsigned char*)(&sharedSec1) + i);
+    }
+    unsigned char temp[32];
+    memcpy(temp, amount, 32);
+    for (int i = 0;i < 32; i++) {
+        amount[i] = temp[i % 8] ^ *((unsigned char*)(&sharedSec2) + i);
+    }
+}
+
+- (void)ECDHInfo_Encode:(BRKey *)mask :(uint64_t*)amount :(NSMutableData*)sharedSec :(UInt256*)encodedMask :(UInt256*)encodedAmount
+{
+    memcpy(encodedMask, mask.secretKey, 32);
+    encodedAmount->u64[0] = *amount;
+    [self ecdhEncode:(unsigned char*)encodedMask :(unsigned char*)encodedAmount :sharedSec];
+}
+
+- (bool)EncodeTxOutAmount:(BRTxOut *)txout :(uint64_t*)amount :(NSMutableData *)sharedSec :(bool)isCoinstake {
+    if (*amount < 0) {
+        return NO;
+    }
+    //generate random mask
+    if (!isCoinstake) {
+        txout->mask_inMemoryRawBind = [BRKey keyWithRandSecret:YES];
+        memcpy(&txout->mask_mask, txout->mask_inMemoryRawBind.secretKey, 32);
+        txout->mask_amount.u64[0] = *amount;
+        NSMutableData *sharedPub = [NSMutableData dataWithBytes:sharedSec.bytes length:33];
+        [self ECDHInfo_Encode:txout->mask_inMemoryRawBind :amount :sharedPub :&txout->mask_mask :&txout->mask_amount];
+        txout->mask_hashOfKey = sharedSec.SHA256_2;
+    } else {
+        txout->mask_amount.u64[0] = *amount;
+        NSMutableData *sharedPub = [NSMutableData dataWithBytes:sharedSec.bytes length:33];
+        [self ecdhEncode:(unsigned char*)&txout->mask_mask :(unsigned char*)&txout->mask_amount :sharedPub];
+        txout->mask_hashOfKey = sharedSec.SHA256_2;
+    }
+    return NO;
+}
+
+- (BOOL)CreateTransactionBulletProof:(BRKey*)txPrivDes :(NSData*)recipientViewKey :(NSData*)vec_scriptPubKey :(uint64_t)vec_nValue
+                                    :(BRTransaction*) wtxNew :(uint64_t*)nFeeRet :(BRCoinControl*)coinControl
+                                    :(AvailableCoinsType)coin_type :(bool)useIX :(uint64_t)nFeePay :(int)ringSize :(bool)tomyself
+{
+    if (useIX && nFeePay < CENT) nFeePay = CENT;
+
+    //randomize ring size
+
+    ringSize = 6 + rand() % 6;
+
+    //Currently we only allow transaction with one or two recipients
+    //If two, the second recipient is a change output
+
+    uint64_t nValue = 0;
+    nValue = nValue + vec_nValue;
+
+    if (nValue < 0) {
+        NSLog(@"Transaction amounts must be positive");
+        return NO;
+    }
+
+    wtxNew.fTimeReceivedIsTxTime = true;
+    BRTransaction *txNew = [[BRTransaction alloc] init];
+    txNew.hasPaymentID = wtxNew.hasPaymentID;
+    txNew.paymentID = wtxNew.paymentID;
+
+    *nFeeRet = 0;
+    if (nFeePay > 0) *nFeeRet = nFeePay;
+    unsigned int nBytes = 0;
+    while (true) {
+        [txNew inputInit];
+        [txNew outputInit];
+        wtxNew.fFromMe = true;
+
+        uint64_t nTotalValue = nValue + *nFeeRet;
+        double dPriority = 0;
+
+        // vouts to the payees
+        if (coinControl) {
+            NSData *txPub = txPrivDes.publicKey;
+            [self.txPrivKeys addObject:txPrivDes];
+            
+            BRTxOut txout;
+            initTxOut(&txout);
+            txout.txPub = [NSMutableData dataWithBytes:txPub.bytes length:txPub.length];
+            txout.scriptPubKey = [NSMutableData dataWithBytes:vec_scriptPubKey.bytes length:vec_scriptPubKey.length];
+            txout.nValue = vec_nValue;
+            if (txout.nValue < 1820 * 3) {
+                NSLog(@"Transaction amount too small");
+                return NO;
+            }
+            NSMutableData *sharedSec;
+            [self ECDHInfo_ComputeSharedSec:txPrivDes.secretKey :recipientViewKey :&sharedSec];
+            [self EncodeTxOutAmount:&txout :&txout.nValue :sharedSec :false];
+            [txNew addOutput:&txout];
+            nBytes += getSerializeSize(&txout);
+        }
+
+        // Choose coins to use
+//        set<pair<const CWalletTx*, unsigned int> > setCoins;
+//        CAmount nValueIn = 0;
+//        nTotalValue += 1 * COIN; //reserver 1 DAPS for transaction fee
+//        if (!SelectCoins(nTotalValue, setCoins, nValueIn, coinControl, coin_type, useIX)) {
+//            if (coin_type == ALL_COINS) {
+//                strFailReason = _("Insufficient funds.");
+//            } else if (coin_type == ONLY_NOT1000000IFMN) {
+//                strFailReason = _("Unable to locate enough funds for this transaction that are not equal 10000 DAPS.");
+//            } else if (coin_type == ONLY_NONDENOMINATED_NOT1000000IFMN) {
+//                strFailReason = _("Unable to locate enough Obfuscation non-denominated funds for this transaction that are not equal 1000000 DAPS.");
+//            } else {
+//                strFailReason = _("Unable to locate enough Obfuscation denominated funds for this transaction.");
+//                strFailReason += " " + _("Obfuscation uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.");
+//            }
+//
+//            if (useIX) {
+//                strFailReason += " " + _("SwiftX requires inputs with at least 6 confirmations, you might need to wait a few minutes and try again.");
+//            }
+//
+//            return false;
+//        }
+//
+//        CAmount nChange = nValueIn - nValue - nFeeRet;
+//
+//        //over pay for denominated transactions
+//        if (coin_type == ONLY_DENOMINATED) {
+//            nFeeRet += nChange;
+//            nChange = 0;
+//            wtxNew.mapValue["DS"] = "1";
+//        }
+//
+//        if (nChange > 0) {
+//            // Fill a vout to ourself
+//            // TODO: pass in scriptChange instead of reservekey so
+//            // change transaction isn't always pay-to-dapscoin-address
+//            CScript scriptChange;
+//
+//            // coin control: send change to custom address
+//            //TODO: change transaction output needs to be stealth as well: add code for stealth transaction here
+//            scriptChange = GetScriptForDestination(coinControl->receiver);
+//
+//            CTxOut newTxOut(nChange, scriptChange);
+//            txPrivKeys.push_back(coinControl->txPriv);
+//            CPubKey txPubChange = coinControl->txPriv.GetPubKey();
+//            std::copy(txPubChange.begin(), txPubChange.end(), std::back_inserter(newTxOut.txPub));
+//            nBytes += ::GetSerializeSize(*(CTxOut*)&newTxOut, SER_NETWORK, PROTOCOL_VERSION);
+//            //formulae for ring signature size
+//            int rsSize = (setCoins.size() + 2) * (ringSize + 1) * 32 /*SIJ*/ + 32 /*C*/ + (txNew.vout.size() + 2) * 33 /*key images*/ + 768 + setCoins.size() * sizeof(CTxIn) + setCoins.size() * ringSize * sizeof(COutPoint);
+//            nBytes += rsSize;
+//            CAmount nFeeNeeded = max(nFeePay, GetMinimumFee(nBytes, nTxConfirmTarget, mempool));
+//            newTxOut.nValue -= nFeeNeeded;
+//            txNew.nTxFee = nFeeNeeded;
+//            LogPrintf("\n%s: nFeeNeeded=%d\n", __func__, txNew.nTxFee);
+//            if (newTxOut.nValue <= 0) return false;
+//            CPubKey shared;
+//            computeSharedSec(txNew, newTxOut, shared);
+//            EncodeTxOutAmount(newTxOut, newTxOut.nValue, shared.begin());
+//            if (!tomyself) txNew.vout.push_back(newTxOut);
+//            else {
+//                vector<CTxOut>::iterator position = txNew.vout.begin() + GetRandInt(txNew.vout.size() + 1);
+//                txNew.vout.insert(position, newTxOut);
+//            }
+//        } else {
+//            return false;
+//        }
+//
+//        // Fill vin
+//        BOOST_FOREACH (const PAIRTYPE(const CWalletTx*, unsigned int) & coin, setCoins)
+//        txNew.vin.push_back(CTxIn(coin.first->GetHash(), coin.second));
+//
+//        // Embed the constructed transaction data in wtxNew.
+//        *static_cast<CTransaction*>(&wtxNew) = CTransaction(txNew);
+//
+//        dPriority = wtxNew.ComputePriority(dPriority, nBytes);
+//
+//        // Can we complete this as a free transaction?
+//        if (fSendFreeTransactions && nBytes <= MAX_FREE_TRANSACTION_CREATE_SIZE) {
+//            // Not enough fee: enough priority?
+//            double dPriorityNeeded = mempool.estimatePriority(nTxConfirmTarget);
+//            // Not enough mempool history to estimate: use hard-coded AllowFree.
+//            if (dPriorityNeeded <= 0 && AllowFree(dPriority))
+//                break;
+//
+//            // Small enough, and priority high enough, to send for free
+//            if (dPriorityNeeded > 0 && dPriority >= dPriorityNeeded)
+//                break;
+//        }
+//
+//        CAmount nFeeNeeded = max(nFeePay, GetMinimumFee(nBytes, nTxConfirmTarget, mempool));
+//
+//        // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
+//        // because we must be at the maximum allowed fee.
+//        if (nFeeNeeded <= 0) {
+//            strFailReason = _("Transaction too large for fee policy");
+//            return false;
+//        }
+//        nFeeRet = nFeeNeeded;
+//        break;
+    }
+//    if (!makeRingCT(wtxNew, ringSize, strFailReason)) {
+//        strFailReason = _("Failed to generate RingCT");
+//        return false;
+//    }
+//
+//    if (!generateBulletProofAggregate(wtxNew)) {
+//        strFailReason = _("Failed to generate bulletproof");
+//        return false;
+//    }
+//
+//    //check whether this is a reveal amount transaction
+//    //only create transaction with reveal amount if it is a masternode collateral transaction
+//    //set transaction output amounts as 0
+//    for (size_t i = 0; i < wtxNew.vout.size(); i++) {
+//        wtxNew.vout[i].nValue = 0;
+//    }
+    
+    return YES;
+}
+
+- (BOOL)SendToStealthAddress:(NSString*)stealthAddr :(uint64_t)nValue :(BRTransaction*)wtxNew :(bool)fUseIX :(int)ringSize
+{
+    // Check amount
+    if (nValue <= 0) {
+        NSLog(@"Invalid amount");
+        return NO;
+    }
+
+//    if (this->IsLocked()) {
+//        NSLog(@"Error: Wallet locked, unable to create transaction!");
+//        return NO;
+//    }
+
+    NSString *myAddress;
+    BOOL tomyself = [self.receiveStealthAddress isEqualToString:stealthAddr];
+
+    //Parse stealth address
+    NSMutableData *pubViewKey = [NSMutableData data];
+    NSMutableData *pubSpendKey = [NSMutableData data];
+    BOOL hasPaymentID;
+    uint64_t paymentID;
+    if (![self DecodeStealthAddress:stealthAddr :pubViewKey :pubSpendKey :&hasPaymentID :&paymentID]) {
+        NSLog(@"Stealth address mal-formatted");
+        return NO;
+    }
+
+    // Generate transaction public key
+    BRKey *secret = [BRKey keyWithRandSecret:YES];
+//    SetMinVersion(FEATURE_COMPRPUBKEY);
+    wtxNew.txPrivM = [BRKey keyWithSecret:*secret.secretKey compressed:YES];
+
+    wtxNew.hasPaymentID = 0;
+    if (hasPaymentID) {
+        wtxNew.hasPaymentID = 1;
+        wtxNew.paymentID = paymentID;
+    }
+
+    //Compute stealth destination
+    NSMutableData *stealthDes = [NSMutableData data];
+    [self computeStealthDestination:secret :pubViewKey :pubSpendKey :stealthDes];
+
+    NSMutableData *scriptPubKey = [NSMutableData data];
+    [scriptPubKey appendScriptPubKey:stealthDes];
+    
+    NSMutableData *changeDes = [NSMutableData data];
+    BRKey *secretChange = [BRKey keyWithRandSecret:YES];
+    [self computeStealthDestination:secretChange :self.viewKey.publicKey :self.spendKey.publicKey :changeDes];
+    
+    BRCoinControl control;
+    control.destChange = changeDes.hash160;
+    control.receiver = changeDes;
+    control.txPriv = secretChange;
+    uint64_t nFeeRequired;
+    
+    if (![self CreateTransactionBulletProof:secret :pubViewKey :scriptPubKey :nValue :wtxNew
+                                           :&nFeeRequired :&control :ALL_COINS :fUseIX :0 :6 :tomyself]) {
+//        if (nValue + nFeeRequired > pwalletMain->GetBalance())
+//            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!, nfee=%d, nValue=%d", FormatMoney(nFeeRequired), nFeeRequired, nValue);
+//        LogPrintf("SendToStealthAddress() : Not enough! %s\n", strError);
+//        throw runtime_error(strError);
+    }
+//    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, (!fUseIX ? "tx" : "ix"))) {
+//        inSpendQueueOutpointsPerSession.clear();
+//        throw runtime_error(
+//                            "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+//    }
+//    for(size_t i = 0; i < inSpendQueueOutpointsPerSession.size(); i++) {
+//        inSpendQueueOutpoints[inSpendQueueOutpointsPerSession[i]] = true;
+//        inSpendQueueOutpointsPerSession.clear();
+//    }
+//    uint256 hash = wtxNew.GetHash();
+//    int maxTxPrivKeys = txPrivKeys.size() > wtxNew.vout.size() ? wtxNew.vout.size() : txPrivKeys.size();
+//    for (int i = 0; i < maxTxPrivKeys; i++) {
+//        std::string key = hash.GetHex() + std::to_string(i);
+//        CWalletDB(strWalletFile).WriteTxPrivateKey(key, CBitcoinSecret(txPrivKeys[i]).ToString());
+//    }
+//    txPrivKeys.clear();
     return YES;
 }
 

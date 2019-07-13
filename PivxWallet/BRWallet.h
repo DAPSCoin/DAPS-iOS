@@ -29,9 +29,26 @@
 #import "BRKeySequence.h"
 #import "NSData+Bitcoin.h"
 
+typedef struct _BRCoinControl {
+    UInt160 destChange;
+    NSData *receiver;
+    BRKey *txPriv;  //for change UTXO
+} BRCoinControl;
+
+typedef enum _AvailableCoinsType {
+    ALL_COINS = 1,
+    ONLY_DENOMINATED = 2,
+    ONLY_NOT1000000IFMN = 3,
+    ONLY_NONDENOMINATED_NOT1000000IFMN = 4, // ONLY_NONDENOMINATED and not 1000000 DAPS at the same time
+    ONLY_1000000 = 5,                        // find masternode outputs including locked ones (use with caution)
+    STAKABLE_COINS = 6                          // UTXO's that are valid for staking
+} AvailableCoinsType;
+
 FOUNDATION_EXPORT NSString* _Nonnull const BRWalletBalanceChangedNotification;
 
 #define DUFFS           100000000LL
+#define COIN DUFFS
+#define CENT 1000000LL
 #define MAX_MONEY          (21000000LL*DUFFS) // TODO: Infinite in PIVX.. check this.
 #define DEFAULT_FEE_PER_KB ((5000ULL*100 + 99)/100) // bitcoind 0.11 min relay fee on 100bytes
 #define MIN_FEE_PER_KB     ((TX_FEE_PER_KB*1000 + 190)/191) // minimum relay fee on a 191byte tx
@@ -96,6 +113,8 @@ typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amoun
 
 // outputs below this amount are uneconomical due to fees
 @property (nonatomic, readonly) uint64_t minOutputAmount;
+
+@property (nonatomic, strong) NSMutableArray *txPrivKeys;
 
 // largest amount that can be sent from the wallet after fees
 - (uint64_t)maxOutputAmountUsingInstantSend:(BOOL)instantSend;
@@ -167,6 +186,7 @@ typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amoun
 
 - (bool)makeRingCT:(BRTransaction *_Nonnull)wtxNew :(int)ringSize :(NSString * _Nonnull)strFailReason;
 - (bool)selectDecoysAndRealIndex: (BRTransaction *_Nonnull)tx :(int *_Nonnull)myIndex :(int)ringSize;
+- (bool)SendToStealthAddress:(NSString*)stealthAddr :(uint64_t)nValue :(BRTransaction*)wtxNew :(bool)fUseIX :(int)ringSize;
 
 - (bool)IsProofOfStake:(BRMerkleBlock *_Nonnull)block;
 - (bool)IsProofOfWork:(BRMerkleBlock *_Nonnull)block;
