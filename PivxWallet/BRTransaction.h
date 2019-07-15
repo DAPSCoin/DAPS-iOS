@@ -90,8 +90,8 @@ enum {
 @property (nonatomic, readonly) NSMutableArray *inputHashes;
 @property (nonatomic, readonly) NSMutableArray *inputIndexes;
 @property (nonatomic, readonly) NSArray *inputScripts;
-@property (nonatomic, readonly) NSArray *inputSignatures;
-@property (nonatomic, readonly) NSArray *inputSequences;
+@property (nonatomic, readonly) NSMutableArray *inputSignatures;
+@property (nonatomic, readonly) NSMutableArray *inputSequences;
 @property (nonatomic, readonly) NSArray *inputEncryptionKey;
 @property (nonatomic, readonly) NSMutableArray *inputKeyImage;
 @property (nonatomic, readonly) NSMutableArray *inputDecoys;
@@ -99,7 +99,7 @@ enum {
 @property (nonatomic, readonly) NSArray *inputS;
 @property (nonatomic, readonly) NSArray *inputR;
 
-@property (nonatomic, readonly) NSArray *outputAmounts;
+@property (nonatomic, readonly) NSMutableArray *outputAmounts;
 @property (nonatomic, readonly) NSArray *outputAddresses;
 @property (nonatomic, readonly) NSArray *outputScripts;
 @property (nonatomic, readonly) NSArray *outputTxPriv;

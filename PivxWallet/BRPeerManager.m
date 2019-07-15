@@ -1559,8 +1559,7 @@ static const char *dns_seeds[] = {
         if (p.feePerKb > maxFeePerKb) secondFeePerKb = maxFeePerKb, maxFeePerKb = p.feePerKb;
     }
     
-    if (secondFeePerKb*2 > MIN_FEE_PER_KB && secondFeePerKb*2 <= MAX_FEE_PER_KB &&
-        secondFeePerKb*2 > manager.wallet.feePerKb) {
+    if (secondFeePerKb*2 > manager.wallet.feePerKb) {
         NSLog(@"increasing feePerKb to %llu based on feefilter messages from peers", secondFeePerKb*2);
         manager.wallet.feePerKb = secondFeePerKb*2;
     }

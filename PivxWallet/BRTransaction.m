@@ -383,12 +383,12 @@ outputAddresses:(NSArray *)addresses outputAmounts:(NSArray *)amounts
     return self.inScripts;
 }
 
-- (NSArray *)inputSignatures
+- (NSMutableArray *)inputSignatures
 {
     return self.signatures;
 }
 
-- (NSArray *)inputSequences
+- (NSMutableArray *)inputSequences
 {
     return self.sequences;
 }
@@ -423,7 +423,7 @@ outputAddresses:(NSArray *)addresses outputAmounts:(NSArray *)amounts
     return self.in_R;
 }
 
-- (NSArray *)outputAmounts
+- (NSMutableArray *)outputAmounts
 {
     return self.amounts;
 }

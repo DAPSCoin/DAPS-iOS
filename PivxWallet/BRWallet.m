@@ -70,7 +70,6 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 @property (nonatomic, strong) NSMutableDictionary *blindMaps;
 @property (nonatomic, strong) NSMutableArray *coinbaseDecoysPool;
 @property (nonatomic, strong) NSMutableArray *userDecoysPool;
-@property (nonatomic, strong) NSMutableArray *inSpendQueueOutpointsPerSession;
 
 @property (nonatomic, strong) BRKey *viewKey, *spendKey;
 
@@ -105,7 +104,6 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     self.spendKey = nil;
     self.coinbaseDecoysPool = [NSMutableArray array];
     self.userDecoysPool = [NSMutableArray array];
-    self.inSpendQueueOutpointsPerSession = [NSMutableArray array];
     self.txPrivKeys = [NSMutableArray array];
     
     [self.moc performBlockAndWait:^{
@@ -978,13 +976,13 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     [*sharedSec appendBytes:temp.bytes length:33];
 }
 
-- (BOOL)ComputeSharedSec:(BRTransaction *)transaction :(NSUInteger)outIndex :(NSMutableData **)sharedSec {
+- (BOOL)ComputeSharedSec:(BRTransaction *)transaction :(NSMutableData*)outTxPub :(NSMutableData **)sharedSec {
     if (transaction.txType == TX_TYPE_REVEAL_AMOUNT || transaction.txType == TX_TYPE_REVEAL_BOTH) {
         *sharedSec = [NSMutableData secureDataWithCapacity:33];
-        [*sharedSec appendBytes:[transaction.outputTxPub[outIndex] bytes] length:33];
+        [*sharedSec appendBytes:outTxPub.bytes length:33];
     } else {
         const UInt256 *view = self.viewKey.secretKey;
-        [self ECDHInfo_ComputeSharedSec:view :transaction.outputTxPub[outIndex] :sharedSec];
+        [self ECDHInfo_ComputeSharedSec:view :outTxPub :sharedSec];
     }
     
     return YES;
@@ -1034,7 +1032,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 //    }
     
     NSMutableData *sharedSec;
-    [self ComputeSharedSec:transaction :outIndex :&sharedSec];
+    [self ComputeSharedSec:transaction :transaction.outputTxPub[outIndex] :&sharedSec];
     
     UInt256 val, mask;
     NSArray *maskvalue = (NSArray*)transaction.outputMaskValue[outIndex];
@@ -1297,12 +1295,12 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     decoys = (NSMutableArray*)tx.inputDecoys[0];
     *myIndex = rand() % (decoys.count + 1) - 1;
     
-    for (size_t i = 0; i < tx.inputHashes.count; i++) {
-        BRUTXO o;
-        [tx.inputHashes[i] getValue:&o.hash];
-        o.n = [tx.inputIndexes[i] unsignedIntValue];
-        [self.inSpendQueueOutpointsPerSession addObject:brutxo_obj(o)];
-    }
+//    for (size_t i = 0; i < tx.inputHashes.count; i++) {
+//        BRUTXO o;
+//        [tx.inputHashes[i] getValue:&o.hash];
+//        o.n = [tx.inputIndexes[i] unsignedIntValue];
+//        [self.inSpendQueueOutpointsPerSession addObject:brutxo_obj(o)];
+//    }
 
     if (*myIndex != -1) {
         for(size_t i = 0; i < tx.inputHashes.count; i++) {
@@ -1370,7 +1368,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     return YES;
 }
 
-- (bool)makeRingCT:(BRTransaction *_Nonnull)wtxNew :(int)ringSize :(NSString * _Nonnull)strFailReason {
+- (bool)makeRingCT:(BRTransaction *_Nonnull)wtxNew :(int)ringSize {
     int myIndex;
     if (![self selectDecoysAndRealIndex:wtxNew :&myIndex :ringSize]) {
         return NO;
@@ -1978,6 +1976,65 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     return NO;
 }
 
+- (bool)SelectCoins:(uint64_t)nTargetValue :(NSMutableArray *)setCoinsRet :(uint64_t*)nValueRet :(BRCoinControl*)coinControl :(AvailableCoinsType)coin_type
+{
+    BRUTXO o;
+    for (NSValue *output in self.utxos) {
+        [output getValue:&o];
+        UInt256 wtxid = o.hash;
+        int i = o.n;
+        BRTransaction *pcoin = [self transactionForHash:wtxid];
+        
+        if ([pcoin isCoinBase] || [pcoin isCoinStake] || [pcoin isCoinAudit])
+            continue;
+        
+        NSData *scriptPubKey = pcoin.outputScripts[i];
+        NSMutableData *pubKey = [NSMutableData data];
+        [pubKey appendPubKey:scriptPubKey];
+        if (![self HaveKey:pubKey])
+            continue;
+        
+        uint64_t decodedAmount;
+        BRKey *decodedBlind = nil;
+        [self RevealTxOutAmount:pcoin :i :&decodedAmount :decodedBlind];
+        if (decodedAmount == 1000000 * COIN && coin_type != ONLY_1000000)
+            continue;
+        
+        NSMutableData *commitment = [NSMutableData data];
+        [self CreateCommitment:(unsigned char*)decodedBlind.secretKey :decodedAmount :commitment];
+        if (![pcoin.outputCommitment[i] isEqualToData:commitment]) {
+            UInt256 hashData = pcoin.txHash;
+            NSLog(@"Commitment not match hash = %@, i = %d", [NSMutableData dataWithBytes:&hashData length:sizeof(hashData)].hexString, i);
+            continue;
+        }
+        
+        if ([self.spentOutputs containsObject:output])
+            continue;
+        
+        if (coinControl) {
+            *nValueRet = *nValueRet + decodedAmount;
+            [setCoinsRet addObject:output];
+            if (*nValueRet >= nTargetValue)
+                break;
+        }
+    }
+    
+    return (*nValueRet >= nTargetValue);
+}
+
+- (uint64_t)GetMinimumFee:(unsigned int)nTxBytes
+{
+    // payTxFee is user-set "I want to pay this much"
+    uint64_t nFeeNeeded = self.feePerKb * nTxBytes / 1000;
+    if (nFeeNeeded == 0)
+        nFeeNeeded = self.feePerKb;
+    
+    // But always obey the maximum
+    if (nFeeNeeded > MAX_FEE_PER_KB)
+        nFeeNeeded = MAX_FEE_PER_KB;
+    return nFeeNeeded;
+}
+
 - (BOOL)CreateTransactionBulletProof:(BRKey*)txPrivDes :(NSData*)recipientViewKey :(NSData*)vec_scriptPubKey :(uint64_t)vec_nValue
                                     :(BRTransaction*) wtxNew :(uint64_t*)nFeeRet :(BRCoinControl*)coinControl
                                     :(AvailableCoinsType)coin_type :(bool)useIX :(uint64_t)nFeePay :(int)ringSize :(bool)tomyself
@@ -2000,16 +2057,13 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     }
 
     wtxNew.fTimeReceivedIsTxTime = true;
-    BRTransaction *txNew = [[BRTransaction alloc] init];
-    txNew.hasPaymentID = wtxNew.hasPaymentID;
-    txNew.paymentID = wtxNew.paymentID;
 
     *nFeeRet = 0;
     if (nFeePay > 0) *nFeeRet = nFeePay;
     unsigned int nBytes = 0;
     while (true) {
-        [txNew inputInit];
-        [txNew outputInit];
+        [wtxNew inputInit];
+        [wtxNew outputInit];
         wtxNew.fFromMe = true;
 
         uint64_t nTotalValue = nValue + *nFeeRet;
@@ -2018,7 +2072,6 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         // vouts to the payees
         if (coinControl) {
             NSData *txPub = txPrivDes.publicKey;
-            [self.txPrivKeys addObject:txPrivDes];
             
             BRTxOut txout;
             initTxOut(&txout);
@@ -2032,126 +2085,92 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             NSMutableData *sharedSec;
             [self ECDHInfo_ComputeSharedSec:txPrivDes.secretKey :recipientViewKey :&sharedSec];
             [self EncodeTxOutAmount:&txout :&txout.nValue :sharedSec :false];
-            [txNew addOutput:&txout];
+            [wtxNew addOutput:&txout];
             nBytes += getSerializeSize(&txout);
         }
 
         // Choose coins to use
-//        set<pair<const CWalletTx*, unsigned int> > setCoins;
-//        CAmount nValueIn = 0;
-//        nTotalValue += 1 * COIN; //reserver 1 DAPS for transaction fee
-//        if (!SelectCoins(nTotalValue, setCoins, nValueIn, coinControl, coin_type, useIX)) {
-//            if (coin_type == ALL_COINS) {
-//                strFailReason = _("Insufficient funds.");
-//            } else if (coin_type == ONLY_NOT1000000IFMN) {
-//                strFailReason = _("Unable to locate enough funds for this transaction that are not equal 10000 DAPS.");
-//            } else if (coin_type == ONLY_NONDENOMINATED_NOT1000000IFMN) {
-//                strFailReason = _("Unable to locate enough Obfuscation non-denominated funds for this transaction that are not equal 1000000 DAPS.");
-//            } else {
-//                strFailReason = _("Unable to locate enough Obfuscation denominated funds for this transaction.");
-//                strFailReason += " " + _("Obfuscation uses exact denominated amounts to send funds, you might simply need to anonymize some more coins.");
-//            }
-//
-//            if (useIX) {
-//                strFailReason += " " + _("SwiftX requires inputs with at least 6 confirmations, you might need to wait a few minutes and try again.");
-//            }
-//
-//            return false;
-//        }
-//
-//        CAmount nChange = nValueIn - nValue - nFeeRet;
-//
-//        //over pay for denominated transactions
-//        if (coin_type == ONLY_DENOMINATED) {
-//            nFeeRet += nChange;
-//            nChange = 0;
-//            wtxNew.mapValue["DS"] = "1";
-//        }
-//
-//        if (nChange > 0) {
-//            // Fill a vout to ourself
-//            // TODO: pass in scriptChange instead of reservekey so
-//            // change transaction isn't always pay-to-dapscoin-address
-//            CScript scriptChange;
-//
-//            // coin control: send change to custom address
-//            //TODO: change transaction output needs to be stealth as well: add code for stealth transaction here
-//            scriptChange = GetScriptForDestination(coinControl->receiver);
-//
-//            CTxOut newTxOut(nChange, scriptChange);
-//            txPrivKeys.push_back(coinControl->txPriv);
-//            CPubKey txPubChange = coinControl->txPriv.GetPubKey();
-//            std::copy(txPubChange.begin(), txPubChange.end(), std::back_inserter(newTxOut.txPub));
-//            nBytes += ::GetSerializeSize(*(CTxOut*)&newTxOut, SER_NETWORK, PROTOCOL_VERSION);
-//            //formulae for ring signature size
-//            int rsSize = (setCoins.size() + 2) * (ringSize + 1) * 32 /*SIJ*/ + 32 /*C*/ + (txNew.vout.size() + 2) * 33 /*key images*/ + 768 + setCoins.size() * sizeof(CTxIn) + setCoins.size() * ringSize * sizeof(COutPoint);
-//            nBytes += rsSize;
-//            CAmount nFeeNeeded = max(nFeePay, GetMinimumFee(nBytes, nTxConfirmTarget, mempool));
-//            newTxOut.nValue -= nFeeNeeded;
-//            txNew.nTxFee = nFeeNeeded;
-//            LogPrintf("\n%s: nFeeNeeded=%d\n", __func__, txNew.nTxFee);
-//            if (newTxOut.nValue <= 0) return false;
-//            CPubKey shared;
-//            computeSharedSec(txNew, newTxOut, shared);
-//            EncodeTxOutAmount(newTxOut, newTxOut.nValue, shared.begin());
-//            if (!tomyself) txNew.vout.push_back(newTxOut);
-//            else {
-//                vector<CTxOut>::iterator position = txNew.vout.begin() + GetRandInt(txNew.vout.size() + 1);
-//                txNew.vout.insert(position, newTxOut);
-//            }
-//        } else {
-//            return false;
-//        }
-//
-//        // Fill vin
-//        BOOST_FOREACH (const PAIRTYPE(const CWalletTx*, unsigned int) & coin, setCoins)
-//        txNew.vin.push_back(CTxIn(coin.first->GetHash(), coin.second));
-//
-//        // Embed the constructed transaction data in wtxNew.
-//        *static_cast<CTransaction*>(&wtxNew) = CTransaction(txNew);
-//
-//        dPriority = wtxNew.ComputePriority(dPriority, nBytes);
-//
-//        // Can we complete this as a free transaction?
-//        if (fSendFreeTransactions && nBytes <= MAX_FREE_TRANSACTION_CREATE_SIZE) {
-//            // Not enough fee: enough priority?
-//            double dPriorityNeeded = mempool.estimatePriority(nTxConfirmTarget);
-//            // Not enough mempool history to estimate: use hard-coded AllowFree.
-//            if (dPriorityNeeded <= 0 && AllowFree(dPriority))
-//                break;
-//
-//            // Small enough, and priority high enough, to send for free
-//            if (dPriorityNeeded > 0 && dPriority >= dPriorityNeeded)
-//                break;
-//        }
-//
-//        CAmount nFeeNeeded = max(nFeePay, GetMinimumFee(nBytes, nTxConfirmTarget, mempool));
-//
-//        // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
-//        // because we must be at the maximum allowed fee.
-//        if (nFeeNeeded <= 0) {
-//            strFailReason = _("Transaction too large for fee policy");
-//            return false;
-//        }
-//        nFeeRet = nFeeNeeded;
-//        break;
+        NSMutableArray * setCoins = [NSMutableArray array];
+        uint64_t nValueIn = 0;
+        nTotalValue += 1 * COIN; //reserver 1 DAPS for transaction fee
+        if (![self SelectCoins:nTotalValue :setCoins :&nValueIn :coinControl :coin_type]) {
+            NSLog(@"Insufficient funds.");
+            return NO;
+        }
+
+        uint64_t nChange = nValueIn - nValue - *nFeeRet;
+
+        if (nChange > 0) {
+            // Fill a vout to ourself
+            // TODO: pass in scriptChange instead of reservekey so
+            // change transaction isn't always pay-to-dapscoin-address
+            NSMutableData *scriptChange = [NSMutableData data];
+
+            // coin control: send change to custom address
+            //TODO: change transaction output needs to be stealth as well: add code for stealth transaction here
+            [scriptChange appendScriptPubKey:coinControl->receiver];
+
+            BRTxOut newTxOut;
+            initTxOut(&newTxOut);
+            newTxOut.nValue = nChange;
+            newTxOut.scriptPubKey = scriptChange;
+
+            NSData *txPubChange = coinControl->txPriv.publicKey;
+            [newTxOut.txPub appendBytes:txPubChange.bytes length:txPubChange.length];
+            nBytes += getSerializeSize(&newTxOut);
+            //formulae for ring signature size
+            int rsSize = (setCoins.count + 2) * (ringSize + 1) * 32 /*SIJ*/ + 32 /*C*/ + (wtxNew.outputAmounts.count + 2) * 33 /*key images*/ + 768 + setCoins.count * 180 /* sizeof(CTxIn) */ + setCoins.count * ringSize * 36 /* sizeof(COutPoint) */;
+            nBytes += rsSize;
+            uint64_t nFeeNeeded = MAX(nFeePay, [self GetMinimumFee:nBytes]);
+            newTxOut.nValue -= nFeeNeeded;
+            wtxNew.nTxFee = nFeeNeeded;
+            NSLog(@"nFeeNeeded=%d\n", wtxNew.nTxFee);
+            if (newTxOut.nValue <= 0) return NO;
+            NSMutableData *shared = [NSMutableData data];
+            [self ComputeSharedSec:wtxNew :newTxOut.txPub :&shared];
+            [self EncodeTxOutAmount:&newTxOut :&newTxOut.nValue :shared.bytes :false];
+            [wtxNew addOutput:&newTxOut];
+        } else {
+            return NO;
+        }
+
+        // Fill vin
+        BRUTXO o;
+        for (NSValue *coin in setCoins) {
+            [coin getValue:&o];
+            [wtxNew.inputHashes addObject:uint256_obj(o.hash)];
+            [wtxNew.inputIndexes addObject:@(o.n)];
+            [wtxNew.inputSignatures addObject:[NSMutableData data]];
+            [wtxNew.inputSequences addObject:@(UINT32_MAX)];
+        }
+
+        uint64_t nFeeNeeded = MAX(nFeePay, [self GetMinimumFee:nBytes]);
+
+        // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
+        // because we must be at the maximum allowed fee.
+        if (nFeeNeeded <= 0) {
+            NSLog(@"Transaction too large for fee policy");
+            return NO;
+        }
+        *nFeeRet = nFeeNeeded;
+        break;
     }
-//    if (!makeRingCT(wtxNew, ringSize, strFailReason)) {
-//        strFailReason = _("Failed to generate RingCT");
-//        return false;
-//    }
-//
-//    if (!generateBulletProofAggregate(wtxNew)) {
-//        strFailReason = _("Failed to generate bulletproof");
-//        return false;
-//    }
-//
-//    //check whether this is a reveal amount transaction
-//    //only create transaction with reveal amount if it is a masternode collateral transaction
-//    //set transaction output amounts as 0
-//    for (size_t i = 0; i < wtxNew.vout.size(); i++) {
-//        wtxNew.vout[i].nValue = 0;
-//    }
+    if (![self makeRingCT:wtxNew :ringSize]) {
+        NSLog(@"Failed to generate RingCT");
+        return NO;
+    }
+
+    if (![self generateBulletProofAggregate:wtxNew]) {
+        NSLog(@"Failed to generate bulletproof");
+        return NO;
+    }
+
+    //check whether this is a reveal amount transaction
+    //only create transaction with reveal amount if it is a masternode collateral transaction
+    //set transaction output amounts as 0
+    for (size_t i = 0; i < wtxNew.outputAmounts.count; i++) {
+        [wtxNew.outputAmounts replaceObjectAtIndex:i withObject:@(0)];
+    }
     
     return YES;
 }
@@ -2163,11 +2182,6 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         NSLog(@"Invalid amount");
         return NO;
     }
-
-//    if (this->IsLocked()) {
-//        NSLog(@"Error: Wallet locked, unable to create transaction!");
-//        return NO;
-//    }
 
     NSString *myAddress;
     BOOL tomyself = [self.receiveStealthAddress isEqualToString:stealthAddr];
@@ -2184,7 +2198,6 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 
     // Generate transaction public key
     BRKey *secret = [BRKey keyWithRandSecret:YES];
-//    SetMinVersion(FEATURE_COMPRPUBKEY);
     wtxNew.txPrivM = [BRKey keyWithSecret:*secret.secretKey compressed:YES];
 
     wtxNew.hasPaymentID = 0;
@@ -2212,27 +2225,16 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     
     if (![self CreateTransactionBulletProof:secret :pubViewKey :scriptPubKey :nValue :wtxNew
                                            :&nFeeRequired :&control :ALL_COINS :fUseIX :0 :6 :tomyself]) {
-//        if (nValue + nFeeRequired > pwalletMain->GetBalance())
-//            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!, nfee=%d, nValue=%d", FormatMoney(nFeeRequired), nFeeRequired, nValue);
-//        LogPrintf("SendToStealthAddress() : Not enough! %s\n", strError);
-//        throw runtime_error(strError);
+        if (nValue + nFeeRequired > self.balance) {
+            NSLog(@"Error: This transaction requires a transaction fee of at least because of its amount, complexity, or use of recently received funds!, nfee=%d, nValue=%d", nFeeRequired, nValue);
+            return NO;
+        }
     }
 //    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, (!fUseIX ? "tx" : "ix"))) {
-//        inSpendQueueOutpointsPerSession.clear();
 //        throw runtime_error(
 //                            "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 //    }
-//    for(size_t i = 0; i < inSpendQueueOutpointsPerSession.size(); i++) {
-//        inSpendQueueOutpoints[inSpendQueueOutpointsPerSession[i]] = true;
-//        inSpendQueueOutpointsPerSession.clear();
-//    }
-//    uint256 hash = wtxNew.GetHash();
-//    int maxTxPrivKeys = txPrivKeys.size() > wtxNew.vout.size() ? wtxNew.vout.size() : txPrivKeys.size();
-//    for (int i = 0; i < maxTxPrivKeys; i++) {
-//        std::string key = hash.GetHex() + std::to_string(i);
-//        CWalletDB(strWalletFile).WriteTxPrivateKey(key, CBitcoinSecret(txPrivKeys[i]).ToString());
-//    }
-//    txPrivKeys.clear();
+
     return YES;
 }
 
@@ -2503,7 +2505,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 // outputs below this amount are uneconomical due to fees
 - (uint64_t)minOutputAmount
 {
-    uint64_t amount = (TX_MIN_OUTPUT_AMOUNT*self.feePerKb + MIN_FEE_PER_KB - 1)/MIN_FEE_PER_KB;
+    uint64_t amount = (TX_MIN_OUTPUT_AMOUNT*self.feePerKb + DEFAULT_FEE_PER_KB - 1)/DEFAULT_FEE_PER_KB;
     
     return (amount > TX_MIN_OUTPUT_AMOUNT) ? amount : TX_MIN_OUTPUT_AMOUNT;
 }

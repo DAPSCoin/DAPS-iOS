@@ -50,9 +50,9 @@ FOUNDATION_EXPORT NSString* _Nonnull const BRWalletBalanceChangedNotification;
 #define COIN DUFFS
 #define CENT 1000000LL
 #define MAX_MONEY          (21000000LL*DUFFS) // TODO: Infinite in PIVX.. check this.
-#define DEFAULT_FEE_PER_KB ((5000ULL*100 + 99)/100) // bitcoind 0.11 min relay fee on 100bytes
-#define MIN_FEE_PER_KB     ((TX_FEE_PER_KB*1000 + 190)/191) // minimum relay fee on a 191byte tx
-#define MAX_FEE_PER_KB     ((100100ULL*1000 + 190)/191) // slightly higher than a 1000bit fee on a 191byte tx
+#define DEFAULT_FEE_PER_KB (0.1 * COIN)
+//#define MIN_FEE_PER_KB     ((TX_FEE_PER_KB*1000 + 190)/191) // minimum relay fee on a 191byte tx
+#define MAX_FEE_PER_KB     (1 * COIN)
 
 #define MAX_DECOYS_POOL 500
 #define PROBABILITY_NEW_COIN_SELECTED 70
@@ -135,6 +135,8 @@ typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amoun
 // true if the address was previously used as an input or output in any wallet transaction
 - (BOOL)addressIsUsed:(NSString * _Nonnull)address;
 
+- (uint32_t)blockHeight;
+
 // Wallets are composed of chains of addresses. Each chain is traversed until a gap of a certain number of addresses is
 // found that haven't been used in any transactions. This method returns an array of <gapLimit> unused addresses
 // following the last used address in the chain. The internal chain is used for change addresses and the external chain
@@ -179,12 +181,12 @@ typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amoun
 // true if the transaction is to me
 - (BOOL)IsTransactionForMe:(BRTransaction * _Nonnull)transaction;
 - (BOOL)RevealTxOutAmount:(BRTransaction * _Nonnull)transaction :(NSUInteger)outIndex :(UInt64 *_Nullable)amount :(BRKey * _Nonnull)blind;
-- (BOOL)ComputeSharedSec:(BRTransaction * _Nonnull)transaction :(NSUInteger)outIndex :(NSMutableData ** _Nonnull)sharedSec;
+- (BOOL)ComputeSharedSec:(BRTransaction * _Nonnull)transaction :(NSMutableData*)outTxPub :(NSMutableData ** _Nonnull)sharedSec;
 - (void)ECDHInfo_Decode:(unsigned char* _Nonnull)encodedMask :(unsigned char* _Nonnull)encodedAmount :(NSData * _Nonnull)sharedSec :(UInt256 * _Nonnull)decodedMask :(UInt64 * _Nonnull)decodedAmount;
 - (void)ECDHInfo_ComputeSharedSec:(const UInt256* _Nonnull)priv :(NSData* _Nonnull)pubKey :(NSMutableData** _Nonnull)sharedSec;
 - (void)ecdhDecode:(unsigned char * _Nonnull)masked :(unsigned char * _Nonnull)amount :(NSData * _Nonnull)sharedSec;
 
-- (bool)makeRingCT:(BRTransaction *_Nonnull)wtxNew :(int)ringSize :(NSString * _Nonnull)strFailReason;
+- (bool)makeRingCT:(BRTransaction *_Nonnull)wtxNew :(int)ringSize;
 - (bool)selectDecoysAndRealIndex: (BRTransaction *_Nonnull)tx :(int *_Nonnull)myIndex :(int)ringSize;
 - (bool)SendToStealthAddress:(NSString*)stealthAddr :(uint64_t)nValue :(BRTransaction*)wtxNew :(bool)fUseIX :(int)ringSize;
 
