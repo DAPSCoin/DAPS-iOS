@@ -84,12 +84,16 @@
     NSURL *url = [NSURL URLWithString:s];
     
     if (! url || ! url.scheme) {
-        if ([s isValidBitcoinAddress] || [s isValidBitcoinPrivateKey]) {
-            url = [NSURL URLWithString:[NSString stringWithFormat:@"bitcoin://%@", s]];
-            self.scheme = @"bitcoin";
-        } else if ([s isValidDashAddress] || [s isValidDashPrivateKey] || [s isValidDashBIP38Key]) {
-            url = [NSURL URLWithString:[NSString stringWithFormat:@"pivx://%@", s]];
-            self.scheme = @"pivx";
+//        if ([s isValidBitcoinAddress] || [s isValidBitcoinPrivateKey]) {
+//            url = [NSURL URLWithString:[NSString stringWithFormat:@"bitcoin://%@", s]];
+//            self.scheme = @"bitcoin";
+//        } else if ([s isValidDashAddress] || [s isValidDashPrivateKey] || [s isValidDashBIP38Key]) {
+//            url = [NSURL URLWithString:[NSString stringWithFormat:@"pivx://%@", s]];
+//            self.scheme = @"pivx";
+//        }
+        if (s.length == 99) {
+            url = [NSURL URLWithString:[NSString stringWithFormat:@"dapscoin://%@", s]];
+            self.scheme = @"dapscoin";
         }
     }
     else if (! url.host && url.resourceSpecifier) {
@@ -98,10 +102,10 @@
     } else if (url.scheme) {
         self.scheme = url.scheme;
     } else {
-        self.scheme = @"pivx";
+        self.scheme = @"dapscoin";
     }
     
-    if ([url.scheme isEqualToString:@"pivx"] || [url.scheme isEqualToString:@"bitcoin"]) {
+    if ([url.scheme isEqualToString:@"dapscoin"] || [url.scheme isEqualToString:@"bitcoin"]) {
         self.paymentAddress = url.host;
     
         //TODO: correctly handle unknown but required url arguments (by reporting the request invalid)
@@ -154,7 +158,7 @@
 
 - (NSString *)string
 {
-    if (! ([self.scheme isEqual:@"bitcoin"] || [self.scheme isEqual:@"pivx"])) return self.r;
+    if (! ([self.scheme isEqual:@"bitcoin"] || [self.scheme isEqual:@"dapscoin"])) return self.r;
 
     NSMutableString *s = [NSMutableString stringWithFormat:@"%@:",self.scheme];
     NSMutableArray *q = [NSMutableArray array];
@@ -217,10 +221,11 @@
 
 - (BOOL)isValid
 {
-    if ([self.scheme isEqualToString:@"pivx"]) {
-        BOOL valid = ([self.paymentAddress isValidDashAddress] || (self.r && [NSURL URLWithString:self.r])) ? YES : NO;
+    if ([self.scheme isEqualToString:@"dapscoin"]) {
+//        BOOL valid = ([self.paymentAddress isValidDashAddress] || (self.r && [NSURL URLWithString:self.r])) ? YES : NO;
+        BOOL valid = self.paymentAddress.length == 99 ? YES : NO;
         if (!valid) {
-            NSLog(@"Not a valid pivx request");
+            NSLog(@"Not a valid dapscoin request");
         }
         return valid;
     } else if ([self.scheme isEqualToString:@"bitcoin"]) {

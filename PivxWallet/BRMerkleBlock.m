@@ -138,20 +138,23 @@ inline static int ceil_log2(int x)
     off += l.unsignedIntegerValue;
     _height = BLOCK_UNKNOWN_HEIGHT;
     
-    [d appendUInt32:_version];
-    [d appendBytes:&_prevBlock length:sizeof(_prevBlock)];
-    [d appendBytes:&_merkleRoot length:sizeof(_merkleRoot)];
     if (_version >= 100 /*POA_BLOCK_VERSION_LOW_LIMIT */) {
-        [d appendBytes:&_hashPrevPoABlock length:sizeof(_hashPrevPoABlock)];
-        [d appendBytes:&_hashPoAMerkleRoot length:sizeof(_hashPoAMerkleRoot)];
+        [d appendBytes:&_prevBlock length:sizeof(_prevBlock)];
         [d appendBytes:&_minedHash length:sizeof(_minedHash)];
+        _blockHash = d.SHA256_2;
+    } else {
+        [d appendUInt32:_version];
+        [d appendBytes:&_prevBlock length:sizeof(_prevBlock)];
+        [d appendBytes:&_merkleRoot length:sizeof(_merkleRoot)];
+        
+        [d appendUInt32:_timestamp];
+        [d appendUInt32:_target];
+        [d appendUInt32:_nonce];
+        _blockHash = d.x11;
     }
-    [d appendUInt32:_timestamp];
-    [d appendUInt32:_target];
-    [d appendUInt32:_nonce];
     
 //    if(![ self isZerocoin ]){
-        _blockHash = d.x11;
+//        _blockHash = d.x11;
 //    }else{
 //        [d appendBytes:&_zerocoinAccumulator length:sizeof(_zerocoinAccumulator)];
 //        _blockHash = d.SHA256_2;

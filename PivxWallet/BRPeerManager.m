@@ -356,7 +356,7 @@ static const char *dns_seeds[] = {
 }
 
 - (NSMutableDictionary *)publishedTx {
-    return self.publishedTx;
+    return _publishedTx;
 }
 
 - (double)syncProgress

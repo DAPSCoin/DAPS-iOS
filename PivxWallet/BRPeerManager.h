@@ -46,6 +46,7 @@ FOUNDATION_EXPORT NSString* _Nonnull const BRPeerManagerTxStatusNotification;
 @property (nonatomic, readonly) double syncProgress;
 @property (nonatomic, readonly) NSUInteger peerCount; // number of connected peers
 @property (nonatomic, readonly) NSString * _Nullable downloadPeerName;
+@property (nonatomic, readonly) NSMutableDictionary *blocks;
 
 + (instancetype _Nullable)sharedInstance;
 

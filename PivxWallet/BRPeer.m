@@ -24,6 +24,7 @@
 //  THE SOFTWARE.
 
 #import "BRPeer.h"
+#import "BRPeerManager.h"
 #import "BRTransaction.h"
 #import "BRMerkleBlock.h"
 #import "NSMutableData+Bitcoin.h"
@@ -768,8 +769,12 @@ services:(uint64_t)services
     
     // to improve chain download performance, if we received 500 block hashes, we request the next 500 block hashes
     if (blockHashes.count >= 500 && ! self.needsFilterUpdate) {
-        [self sendGetblocksMessageWithLocators:@[blockHashes.lastObject, blockHashes.firstObject]
+//        if (![BRPeerManager sharedInstance].blocks[blockHashes.firstObject])
+            [self sendGetblocksMessageWithLocators:@[blockHashes.lastObject, blockHashes.firstObject]
          andHashStop:UINT256_ZERO];
+//        else
+//            [self sendGetblocksMessageWithLocators:@[blockHashes.lastObject, [blockHashes objectAtIndex:1]]
+//                                       andHashStop:UINT256_ZERO];
     }
     
     if (self.mempoolCompletion && (txHashes.count > 0 || blockHashes.count == 0)) {

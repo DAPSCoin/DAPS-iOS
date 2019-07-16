@@ -417,10 +417,6 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                         tx.lockTime > now) pending = YES; // future locktime
                 }
                 
-                for (NSNumber *amount in tx.outputAmounts) { // check that no outputs are dust
-                    if (amount.unsignedLongLongValue < TX_MIN_OUTPUT_AMOUNT) pending = YES;
-                }
-                
                 if (pending || [inputs intersectsSet:pendingTx]) {
                     [pendingTx addObject:uint256_obj(tx.txHash)];
                     [balanceHistory insertObject:@(balance) atIndex:0];
@@ -431,13 +427,21 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             //TODO: don't add outputs below TX_MIN_OUTPUT_AMOUNT
             //TODO: don't add coin generation outputs < 100 blocks deep
             //NOTE: balance/UTXOs will then need to be recalculated when last block changes
-            for (NSString *address in tx.outputAddresses) { // add outputs to UTXO set
-                if ([self containsAddress:address]) {
-                    [utxos addObject:brutxo_obj(((BRUTXO) { tx.txHash, n }))];
-                    balance += [tx.outputAmounts[n] unsignedLongLongValue];
+            if ([self IsTransactionForMe:tx]) {
+                for (int i = 0; i < tx.outputAmounts.count; i++) {
+                    NSData *scriptPubKey = tx.outputScripts[i];
+                    NSMutableData *pubKey = [NSMutableData data];
+                    [pubKey appendPubKey:scriptPubKey];
+                    if (![self HaveKey:pubKey])
+                        continue;
+                    
+                    uint64_t decodedAmount;
+                    BRKey *decodedBlind = nil;
+                    [self RevealTxOutAmount:tx :i :&decodedAmount :decodedBlind];
+                    
+                    [utxos addObject:brutxo_obj(((BRUTXO) { tx.txHash, i }))];
+                    balance += decodedAmount;
                 }
-                
-                n++;
             }
             
             // transaction ordering is not guaranteed, so check the entire UTXO set against the entire spent output set
@@ -451,7 +455,12 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                 [output getValue:&o];
                 transaction = self.allTx[uint256_obj(o.hash)];
                 [utxos removeObject:output];
-                balance -= [transaction.outputAmounts[o.n] unsignedLongLongValue];
+                
+                uint64_t decodedAmount;
+                BRKey *decodedBlind = nil;
+                [self RevealTxOutAmount:transaction :o.n :&decodedAmount :decodedBlind];
+                
+                balance -= decodedAmount;
             }
             
             if (prevBalance < balance) totalReceived += balance - prevBalance;

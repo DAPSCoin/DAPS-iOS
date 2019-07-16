@@ -71,6 +71,7 @@ static NSString *sanitizeString(NSString *s)
 @property (nonatomic, assign) BOOL clearClipboard, useClipboard, showTips, showBalance, canChangeAmount, sendInstantly;
 @property (nonatomic, strong) BRTransaction *sweepTx;
 @property (nonatomic, strong) BRPaymentProtocolRequest *request, *shapeshiftRequest;
+@property (nonatomic, strong) BRPaymentRequest *stealth_request;
 @property (nonatomic, strong) NSString *scheme;
 @property (nonatomic, strong) DSShapeshiftEntity * associatedShapeshift;
 @property (nonatomic, strong) NSURL *url;
@@ -513,11 +514,115 @@ static NSString *sanitizeString(NSString *s)
             });
         }];
     }
-    else [self confirmProtocolRequest:request.protocolRequest currency:request.scheme associatedShapeshift:nil wantsInstant:request.wantsInstant requiresInstantValue:request.instantValueRequired];
+//    else [self confirmProtocolRequest:request.protocolRequest currency:request.scheme associatedShapeshift:nil wantsInstant:request.wantsInstant requiresInstantValue:request.instantValueRequired];
+    else [self confirmStealthRequest: request];
 }
 
 - (void)confirmProtocolRequest:(BRPaymentProtocolRequest *)protoReq {
     [self confirmProtocolRequest:protoReq currency:@"pivx" associatedShapeshift:nil];
+}
+
+- (void)confirmStealthRequest:(BRPaymentRequest *)protoReq {
+    BRWalletManager *manager = [BRWalletManager sharedInstance];
+    BRTransaction *tx = nil;
+    uint64_t amount = 0, fee = 0;
+ 
+    amount = 100;   //test;
+    if (protoReq.amount > 0)
+        amount = protoReq.amount;
+    else
+        amount = self.amount;
+    
+    if (amount == 0 || amount == UINT64_MAX) {
+        BRAmountViewController *amountController = [self.storyboard
+                                                    instantiateViewControllerWithIdentifier:@"AmountViewController"];
+        
+        amountController.delegate = self;
+        self.stealth_request = protoReq;
+        [self updateTitleView];
+        [self.navigationController pushViewController:amountController animated:YES];
+        return;
+    }
+    else if (amount < TX_MIN_OUTPUT_AMOUNT) {
+        UIAlertController * alert = [UIAlertController
+                                     alertControllerWithTitle:NSLocalizedString(@"couldn't make payment", nil)
+                                     message:[NSString stringWithFormat:NSLocalizedString(@"pivx payments can't be less than %@", nil),
+                                              [manager stringForDashAmount:TX_MIN_OUTPUT_AMOUNT]]
+                                     preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction* okButton = [UIAlertAction
+                                   actionWithTitle:NSLocalizedString(@"ok", nil)
+                                   style:UIAlertActionStyleCancel
+                                   handler:^(UIAlertAction * action) {
+                                       
+                                   }];
+        
+        
+        [alert addAction:okButton];
+        [self presentViewController:alert animated:YES completion:nil];
+        [self cancel:nil];
+        return;
+    }
+    
+    tx = [BRTransaction new];
+    [manager.wallet SendToStealthAddress:protoReq.paymentAddress :amount :tx :false :5];
+    
+    if (self.navigationController.topViewController != self.parentViewController.parentViewController) {
+        [self.navigationController popToRootViewControllerAnimated:YES];
+    }
+    
+    __block BOOL waiting = YES, sent = NO;
+    
+    [(id)self.parentViewController.parentViewController startActivityWithTimeout:30.0];
+    
+    [[BRPeerManager sharedInstance] publishTransaction:tx completion:^(NSError *error) {
+        if (error) {
+            if (! waiting && ! sent) {
+                UIAlertController * alert = [UIAlertController
+                                             alertControllerWithTitle:NSLocalizedString(@"couldn't make payment", nil)
+                                             message:error.localizedDescription
+                                             preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertAction* okButton = [UIAlertAction
+                                           actionWithTitle:NSLocalizedString(@"ok", nil)
+                                           style:UIAlertActionStyleCancel
+                                           handler:^(UIAlertAction * action) {
+                                               
+                                           }];
+                [alert addAction:okButton];
+                [self presentViewController:alert animated:YES completion:nil];
+                [(id)self.parentViewController.parentViewController stopActivityWithSuccess:NO];
+                [self cancel:nil];
+            }
+        }
+        else if (! sent) { //TODO: show full screen sent dialog with tx info, "you sent b10,000 to bob"
+            if (tx.associatedShapeshift) {
+                [self startObservingShapeshift:tx.associatedShapeshift];
+                
+            }
+            sent = YES;
+            tx.timestamp = [NSDate timeIntervalSinceReferenceDate];
+            [manager.wallet registerTransaction:tx];
+            [self.view addSubview:[[[BRBubbleView viewWithText:NSLocalizedString(@"sent!", nil)
+                                                        center:CGPointMake(self.view.bounds.size.width/2, self.view.bounds.size.height/2)] popIn]
+                                   popOutAfterDelay:2.0]];
+            [(id)self.parentViewController.parentViewController stopActivityWithSuccess:YES];
+            [(id)self.parentViewController.parentViewController ping];
+            
+            
+//            if (self.request.callbackScheme) {
+//                NSURL * callback = [NSURL URLWithString:[self.request.callbackScheme
+//                                                         stringByAppendingFormat:@"://callback=payack&address=%@&txid=%@",address,
+//                                                         [NSString hexWithData:[NSData dataWithBytes:tx.txHash.u8
+//                                                                                              length:sizeof(UInt256)].reverse]]];
+//                [[UIApplication sharedApplication] openURL:callback options:@{} completionHandler:^(BOOL success) {
+//
+//                }];
+//            }
+            
+            [self reset:nil];
+        }
+        
+        waiting = NO;
+    }];
 }
 
 - (void)confirmProtocolRequest:(BRPaymentProtocolRequest *)protoReq currency:(NSString*)currency associatedShapeshift:(DSShapeshiftEntity*)shapeshift
@@ -1470,7 +1575,11 @@ static NSString *sanitizeString(NSString *s)
                 text = (req.label.length > 0) ? sanitizeString(req.label) : req.paymentAddress;
                 break;
             }
-            else if ([s hasPrefix:@"bitcoin:"]) {
+            else if (s.length == 99) {
+                text = (req.label.length > 0) ? sanitizeString(req.label) : req.paymentAddress;
+                break;
+            }
+            else if ([s hasPrefix:@"dapscoin:"]) {
                 text = sanitizeString(s);
                 break;
             }
@@ -1495,15 +1604,16 @@ static NSString *sanitizeString(NSString *s)
     
     for (NSString *str in array) {
         BRPaymentRequest *req = [BRPaymentRequest requestWithString:str];
-        NSData *data = str.hexToData.reverse;
+//        NSData *data = str.hexToData.reverse;
         
         i++;
         
-        // if the clipboard contains a known txHash, we know it's not a hex encoded private key
-        if (data.length == sizeof(UInt256) && [manager.wallet transactionForHash:*(UInt256 *)data.bytes]) continue;
+//        // if the clipboard contains a known txHash, we know it's not a hex encoded private key
+//        if (data.length == sizeof(UInt256) && [manager.wallet transactionForHash:*(UInt256 *)data.bytes]) continue;
         
-        if ([req.paymentAddress isValidDashAddress] || [str isValidDashPrivateKey] || [str isValidDashBIP38Key] ||
-            (req.r.length > 0 && [req.scheme isEqual:@"pivx:"])) {
+//        if ([req.paymentAddress isValidDashAddress] || [str isValidDashPrivateKey] || [str isValidDashBIP38Key] ||
+//            (req.r.length > 0 && [req.scheme isEqual:@"pivx:"])) {
+        if (req.paymentAddress.length == 99) {
             [self performSelector:@selector(confirmRequest:) withObject:req afterDelay:0.1];// delayed to show highlight
             return;
         }
@@ -1716,7 +1826,7 @@ static NSString *sanitizeString(NSString *s)
 - (void)amountViewController:(BRAmountViewController *)amountViewController selectedAmount:(uint64_t)amount
 {
     self.amount = amount;
-    [self confirmProtocolRequest:self.request];
+    [self confirmStealthRequest:self.stealth_request];
 }
 
 
