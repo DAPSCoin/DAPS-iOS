@@ -527,7 +527,6 @@ static NSString *sanitizeString(NSString *s)
     BRTransaction *tx = nil;
     uint64_t amount = 0, fee = 0;
  
-    amount = 100;   //test;
     if (protoReq.amount > 0)
         amount = protoReq.amount;
     else
@@ -564,7 +563,24 @@ static NSString *sanitizeString(NSString *s)
     }
     
     tx = [BRTransaction new];
-    [manager.wallet SendToStealthAddress:protoReq.paymentAddress :amount :tx :false :5];
+    if (![manager.wallet SendToStealthAddress:protoReq.paymentAddress :amount :tx :false :5]) {
+        UIAlertController * alert = [UIAlertController
+                                     alertControllerWithTitle:NSLocalizedString(@"couldn't make payment", nil)
+                                     message:[NSString stringWithFormat:NSLocalizedString(@"make transaction error", nil)]
+                                     preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction* okButton = [UIAlertAction
+                                   actionWithTitle:NSLocalizedString(@"ok", nil)
+                                   style:UIAlertActionStyleCancel
+                                   handler:^(UIAlertAction * action) {
+                                       
+                                   }];
+        
+        
+        [alert addAction:okButton];
+        [self presentViewController:alert animated:YES completion:nil];
+        [self cancel:nil];
+        return;
+    }
     
     if (self.navigationController.topViewController != self.parentViewController.parentViewController) {
         [self.navigationController popToRootViewControllerAnimated:YES];
@@ -591,6 +607,19 @@ static NSString *sanitizeString(NSString *s)
                 [self presentViewController:alert animated:YES completion:nil];
                 [(id)self.parentViewController.parentViewController stopActivityWithSuccess:NO];
                 [self cancel:nil];
+            } else {
+                UIAlertController * alert = [UIAlertController
+                                             alertControllerWithTitle:NSLocalizedString(@"couldn't make payment", nil)
+                                             message:NSLocalizedString(@"Timed out", nil)
+                                             preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertAction* okButton = [UIAlertAction
+                                           actionWithTitle:NSLocalizedString(@"ok", nil)
+                                           style:UIAlertActionStyleCancel
+                                           handler:^(UIAlertAction * action) {
+                                               
+                                           }];
+                [alert addAction:okButton];
+                [self presentViewController:alert animated:YES completion:nil];
             }
         }
         else if (! sent) { //TODO: show full screen sent dialog with tx info, "you sent b10,000 to bob"

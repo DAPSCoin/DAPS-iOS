@@ -105,6 +105,9 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     self.coinbaseDecoysPool = [NSMutableArray array];
     self.userDecoysPool = [NSMutableArray array];
     self.txPrivKeys = [NSMutableArray array];
+    self.feePerKb = DEFAULT_FEE_PER_KB;
+    self.spentOutputKeyImage = [NSMutableDictionary dictionary];
+    self.inSpendOutput = [NSMutableDictionary dictionary];
     
     [self.moc performBlockAndWait:^{
         [BRAddressEntity setContext:self.moc];
@@ -158,9 +161,14 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             e.internal = NO;
         }
         
+//        int a = [BRTxMetadataEntity countAllObjects];
+//            [BRTxMetadataEntity deleteObjects:[BRTxMetadataEntity allObjects]];
+//            [BRTxMetadataEntity saveContext];
+//            return;
+        
         for (BRTxMetadataEntity *e in [BRTxMetadataEntity allObjects]) {
             @autoreleasepool {
-                if (e.type != TX_MDTYPE_MSG) continue;
+                if (e.type != TX_MINE_MSG) continue;
                 
                 BRTransaction *tx = e.transaction;
                 NSValue *hash = (tx) ? uint256_obj(tx.txHash) : nil;
@@ -170,40 +178,42 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                 [self.transactions addObject:tx];
                 [self.usedAddresses addObjectsFromArray:tx.inputAddresses];
                 [self.usedAddresses addObjectsFromArray:tx.outputAddresses];
+                
+                [self updateSpentOutputKeyImage:tx];
             }
         }
         
-        if ([BRTransactionEntity countAllObjects] > self.allTx.count) {
-            // pre-fetch transaction inputs and outputs
-            [BRTxInputEntity allObjects];
-            [BRTxOutputEntity allObjects];
-            
-            for (BRTransactionEntity *e in [BRTransactionEntity allObjects]) {
-                @autoreleasepool {
-                    BRTransaction *tx = e.transaction;
-                    NSValue *hash = (tx) ? uint256_obj(tx.txHash) : nil;
-                    
-                    if (! tx || self.allTx[hash] != nil) continue;
-                    
-                    [updateTx addObject:tx];
-                    self.allTx[hash] = tx;
-                    [self.transactions addObject:tx];
-                    [self.usedAddresses addObjectsFromArray:tx.inputAddresses];
-                    [self.usedAddresses addObjectsFromArray:tx.outputAddresses];
-                }
-            }
-        }
+//        if ([BRTransactionEntity countAllObjects] > self.allTx.count) {
+//            // pre-fetch transaction inputs and outputs
+//            [BRTxInputEntity allObjects];
+//            [BRTxOutputEntity allObjects];
+//
+//            for (BRTransactionEntity *e in [BRTransactionEntity allObjects]) {
+//                @autoreleasepool {
+//                    BRTransaction *tx = e.transaction;
+//                    NSValue *hash = (tx) ? uint256_obj(tx.txHash) : nil;
+//
+//                    if (! tx || self.allTx[hash] != nil) continue;
+//
+//                    [updateTx addObject:tx];
+//                    self.allTx[hash] = tx;
+//                    [self.transactions addObject:tx];
+//                    [self.usedAddresses addObjectsFromArray:tx.inputAddresses];
+//                    [self.usedAddresses addObjectsFromArray:tx.outputAddresses];
+//                }
+//            }
+//        }
     }];
     
-    if (updateTx.count > 0) {
-        [self.moc performBlock:^{
-            for (BRTransaction *tx in updateTx) {
-                [[BRTxMetadataEntity managedObject] setAttributesFromTx:tx];
-            }
-            
-            [BRTxMetadataEntity saveContext];
-        }];
-    }
+//    if (updateTx.count > 0) {
+//        [self.moc performBlock:^{
+//            for (BRTransaction *tx in updateTx) {
+//                [[BRTxMetadataEntity managedObject] setAttributesFromTx:tx];
+//            }
+//
+//            [BRTxMetadataEntity saveContext];
+//        }];
+//    }
     
     [self sortTransactions];
     _balance = UINT64_MAX; // trigger balance changed notification even if balance is zero
@@ -370,6 +380,68 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     }];
 }
 
+- (BOOL)isSpentOutput:(BRUTXO)output {
+    NSData *value = [self.spentOutputKeyImage objectForKey:brutxo_obj(output)];
+    if (!value)
+        return NO;
+    
+    return YES;
+}
+
+- (void)updateSpentOutputKeyImage:(BRTransaction *)tx {
+    for (int i = 0; i < tx.inputHashes.count; i++) {
+        BRUTXO o;
+        UInt256 hash;
+        [tx.inputHashes[i] getValue:&hash];
+        o.hash = hash;
+        o.n = [tx.inputIndexes[i] unsignedIntValue];
+        
+        NSData *value = [self.spentOutputKeyImage objectForKey:brutxo_obj(o)];
+        if (!value) {
+            BRTransaction *prev = [self transactionForHash:o.hash];
+            if ([self IsTransactionForMe:prev]) {
+                NSMutableData *ki = [NSMutableData data];
+                if ([self generateKeyImage:prev.outputScripts[o.n] :ki]) {
+                    if ([ki isEqualToData:tx.inputKeyImage[i]]) {
+                        if (tx.blockHeight != TX_UNCONFIRMED) {
+                            [self.spentOutputKeyImage setObject:ki forKey:brutxo_obj(o)];
+                            [self.inSpendOutput removeObjectForKey:brutxo_obj(o)];
+                        } else {
+                            [self.inSpendOutput setObject:[NSNumber numberWithBool:YES] forKey:brutxo_obj(o)];
+                        }
+                    }
+                }
+            }
+        }
+        
+        NSArray *decoys = (NSArray*)tx.inputDecoys[i];
+        if (decoys.count > 0) {
+            for (int j = 0; j < decoys.count; j++) {
+                [decoys[j] getValue:&o];
+                
+                value = [self.spentOutputKeyImage objectForKey:brutxo_obj(o)];
+                if (value)
+                    continue;
+                
+                BRTransaction *prev = [self transactionForHash:o.hash];
+                if ([self IsTransactionForMe:prev]) {
+                    NSMutableData *ki = [NSMutableData data];
+                    if ([self generateKeyImage:prev.outputScripts[o.n] :ki]) {
+                        if ([ki isEqualToData:tx.inputKeyImage[i]]) {
+                            if (tx.blockHeight != TX_UNCONFIRMED) {
+                                [self.spentOutputKeyImage setObject:ki forKey:brutxo_obj(o)];
+                                [self.inSpendOutput removeObjectForKey:brutxo_obj(o)];
+                            } else {
+                                [self.inSpendOutput setObject:[NSNumber numberWithBool:YES] forKey:brutxo_obj(o)];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 - (void)updateBalance
 {
     uint64_t balance = 0, prevBalance = 0, totalSent = 0, totalReceived = 0;
@@ -427,7 +499,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             //TODO: don't add outputs below TX_MIN_OUTPUT_AMOUNT
             //TODO: don't add coin generation outputs < 100 blocks deep
             //NOTE: balance/UTXOs will then need to be recalculated when last block changes
-            if ([self IsTransactionForMe:tx]) {
+            if (!pending && (tx.isForMe == YES || [self IsTransactionForMe:tx])) {
                 for (int i = 0; i < tx.outputAmounts.count; i++) {
                     NSData *scriptPubKey = tx.outputScripts[i];
                     NSMutableData *pubKey = [NSMutableData data];
@@ -437,7 +509,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                     
                     uint64_t decodedAmount;
                     BRKey *decodedBlind = nil;
-                    [self RevealTxOutAmount:tx :i :&decodedAmount :decodedBlind];
+                    [self RevealTxOutAmount:tx :i :&decodedAmount :&decodedBlind];
                     
                     [utxos addObject:brutxo_obj(((BRUTXO) { tx.txHash, i }))];
                     balance += decodedAmount;
@@ -446,19 +518,20 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             
             // transaction ordering is not guaranteed, so check the entire UTXO set against the entire spent output set
             [spent setSet:utxos.set];
-            [spent intersectSet:spentOutputs];
-            
             for (NSValue *output in spent) { // remove any spent outputs from UTXO set
                 BRTransaction *transaction;
                 BRUTXO o;
                 
                 [output getValue:&o];
+                if (![self isSpentOutput:o])
+                    continue;
+                
                 transaction = self.allTx[uint256_obj(o.hash)];
                 [utxos removeObject:output];
                 
                 uint64_t decodedAmount;
                 BRKey *decodedBlind = nil;
-                [self RevealTxOutAmount:transaction :o.n :&decodedAmount :decodedBlind];
+                [self RevealTxOutAmount:transaction :o.n :&decodedAmount :&decodedBlind];
                 
                 balance -= decodedAmount;
             }
@@ -821,18 +894,24 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         return YES;
     
     if ([[NSSet setWithArray:transaction.outputAddresses] intersectsSet:self.allAddresses]) return YES;
-    if ([self IsTransactionForMe:transaction])
+    if ([self IsTransactionForMe:transaction]) {
+        transaction.isForMe = YES;
         return YES;
+    }
     
     NSInteger i = 0;
     
     for (NSValue *txHash in transaction.inputHashes) {
         BRTransaction *tx = self.allTx[txHash];
+        if (!tx)
+            continue;
         uint32_t n = [transaction.inputIndexes[i++] unsignedIntValue];
         
         if (n < tx.outputAddresses.count && [self containsAddress:tx.outputAddresses[n]]) return YES;
-        if ([self IsTransactionForMe:tx])
+        if (tx.isForMe == YES || [self IsTransactionForMe:tx]) {
+            tx.isForMe = YES;
             return YES;
+        }
     }
     
     return NO;
@@ -846,36 +925,43 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     
     if (uint256_is_zero(txHash)) return NO;
     
-    if (! [self containsTransaction:transaction]) {
-        if (transaction.blockHeight == TX_UNCONFIRMED) self.allTx[hash] = transaction;
-        return NO;
+    if ([self containsTransaction:transaction]) {
+        if (self.allTx[hash] != nil) return YES;
+    
+        //TODO: handle tx replacement with input sequence numbers (now replacements appear invalid until confirmation)
+        NSLog(@"[BRWallet] received unseen transaction %@", transaction);
+        
+        self.allTx[hash] = transaction;
+        [self.transactions insertObject:transaction atIndex:0];
+        [self.usedAddresses addObjectsFromArray:transaction.inputAddresses];
+        [self.usedAddresses addObjectsFromArray:transaction.outputAddresses];
+        [self updateBalance];
+        
+        // when a wallet address is used in a transaction, generate a new address to replace it
+        [self addressesWithGapLimit:SEQUENCE_GAP_LIMIT_EXTERNAL internal:NO];
+        [self addressesWithGapLimit:SEQUENCE_GAP_LIMIT_INTERNAL internal:YES];
     }
     
-    if (self.allTx[hash] != nil) return YES;
-    
-    //TODO: handle tx replacement with input sequence numbers (now replacements appear invalid until confirmation)
-    NSLog(@"[BRWallet] received unseen transaction %@", transaction);
-    
-    self.allTx[hash] = transaction;
-    [self.transactions insertObject:transaction atIndex:0];
-    [self.usedAddresses addObjectsFromArray:transaction.inputAddresses];
-    [self.usedAddresses addObjectsFromArray:transaction.outputAddresses];
-    [self updateBalance];
-    
-    // when a wallet address is used in a transaction, generate a new address to replace it
-    [self addressesWithGapLimit:SEQUENCE_GAP_LIMIT_EXTERNAL internal:NO];
-    [self addressesWithGapLimit:SEQUENCE_GAP_LIMIT_INTERNAL internal:YES];
-    
     [self.moc performBlock:^{ // add the transaction to core data
-        if ([BRTransactionEntity countObjectsMatching:@"txHash == %@",
-             [NSData dataWithBytes:&txHash length:sizeof(txHash)]] == 0) {
-            [[BRTransactionEntity managedObject] setAttributesFromTx:transaction];
+//        if ([BRTransactionEntity countObjectsMatching:@"txHash == %@",
+//             [NSData dataWithBytes:&txHash length:sizeof(txHash)]] == 0) {
+//            [[BRTransactionEntity managedObject] setAttributesFromTx:transaction];
+//        }
+        
+        if (transaction.isForMe) {
+            if ([BRTxMetadataEntity countObjectsMatching:@"txHash == %@",
+                 [NSData dataWithBytes:&txHash length:sizeof(txHash)]] == 0) {
+                [[BRTxMetadataEntity managedObject] setAttributesFromTx:transaction :YES];
+                [self updateSpentOutputKeyImage:transaction];
+            }
+        } else {
+            if ([BRTxMetadataEntity countObjectsMatching:@"txHash == %@",
+                 [NSData dataWithBytes:&txHash length:sizeof(txHash)]] == 0) {
+                [[BRTxMetadataEntity managedObject] setAttributesFromTx:transaction :NO];
+            }
         }
         
-        if ([BRTxMetadataEntity countObjectsMatching:@"txHash == %@ && type == %d",
-             [NSData dataWithBytes:&txHash length:sizeof(txHash)], TX_MDTYPE_MSG] == 0) {
-            [[BRTxMetadataEntity managedObject] setAttributesFromTx:transaction];
-        }
+        [BRTxMetadataEntity saveContext];
     }];
     
     return YES;
@@ -917,7 +1003,23 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 // returns the transaction with the given hash if it's been registered in the wallet (might also return non-registered)
 - (BRTransaction *)transactionForHash:(UInt256)txHash
 {
-    return self.allTx[uint256_obj(txHash)];
+    BRTransaction *__block tx = self.allTx[uint256_obj(txHash)];
+    if (tx)
+        return tx;
+    
+    [self.moc performBlockAndWait:^{
+        @autoreleasepool {
+            for (BRTxMetadataEntity *e in [BRTxMetadataEntity objectsMatching:@"txHash == %@", [NSData dataWithBytes:&txHash length:sizeof(txHash)]]) {
+                tx = e.transaction;
+                break;
+            }
+        }
+    }];
+    
+    if (tx)
+        return tx;
+    
+    return nil;
 }
 
 // true if no previous wallet transactions spend any of the given transaction's inputs, and no input tx is invalid
@@ -1006,7 +1108,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     return NO;
 }
 
-- (BOOL)RevealTxOutAmount:(BRTransaction *)transaction :(NSUInteger)outIndex :(UInt64 *)amount :(BRKey *)blind {
+- (BOOL)RevealTxOutAmount:(BRTransaction *)transaction :(NSUInteger)outIndex :(UInt64 *)amount :(BRKey **)blind {
     if ([transaction isCoinBase]) {
         *amount = [transaction.outputAmounts[outIndex] unsignedLongLongValue];
         return YES;
@@ -1025,7 +1127,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         
         UInt256 value;
         [[self.blindMaps valueForKey:scriptPubKey.hexString] getValue:&value];
-        blind = [BRKey keyWithSecret:value compressed:YES];
+        *blind = [BRKey keyWithSecret:value compressed:YES];
         return YES;
     }
     
@@ -1052,7 +1154,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     [self ECDHInfo_Decode:(unsigned char*)&mask :(unsigned char*)&val :sharedSec :&decodedMask :amount];
     [self.amountMaps setValue:[NSNumber numberWithUnsignedLongLong:*amount] forKey:scriptPubKey.hexString];
     [self.blindMaps setValue:[NSValue valueWithUInt256:decodedMask] forKey:scriptPubKey.hexString];
-    blind = [BRKey keyWithSecret:decodedMask compressed:YES];
+    *blind = [BRKey keyWithSecret:decodedMask compressed:YES];
     return YES;
 }
 
@@ -1116,14 +1218,6 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                 }];
                 [self.allKeys addObject:privKey];
             }
-            
-            NSData *computed = privKey.publicKey;
-            
-            //put in map from address to txHash used for qt wallet
-            UInt160 tempKeyID = computed.hash160;
-//            UInt64 c;
-//            BRKey *blind;
-//            [self RevealTxOutAmount:transaction :i :&c :blind];
         }
     }
     
@@ -1133,6 +1227,16 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 - (bool)findCoinbaseDecoy:(BRUTXO) outpoint {
     NSValue *outpointValue = brutxo_obj(outpoint);
     for (NSValue *output in self.coinbaseDecoysPool) {
+        if ([output isEqualToValue:outpointValue])
+            return YES;
+    }
+    
+    return NO;
+}
+
+- (bool)findUserDecoy:(BRUTXO) outpoint {
+    NSValue *outpointValue = brutxo_obj(outpoint);
+    for (NSValue *output in self.userDecoysPool) {
         if ([output isEqualToValue:outpointValue])
             return YES;
     }
@@ -1176,11 +1280,80 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     return NO;
 }
 
+- (bool)updateDecoys:(uint32_t)blockHeight {
+    BRPeerManager *manager = [BRPeerManager sharedInstance];
+    BRMerkleBlock *pblock = [manager getBlockWithHeight:blockHeight];
+    
+    int userTxStartIdx = 1;
+    int coinbaseIdx = 0;
+    
+    if ([self IsProofOfStake:pblock]) {
+        userTxStartIdx = 2;
+        coinbaseIdx = 1;
+        
+        UInt256 temp;
+        [pblock.txHashes[1] getValue:&temp];
+        BRTransaction *tx = [self transactionForHash:temp];
+        if (tx) {
+            BRUTXO o;
+            [tx.inputHashes[0] getValue:&temp];
+            o.hash = temp;
+            o.n = [tx.inputIndexes[0] unsignedIntValue];
+            
+            for (int i = 0; i < self.userDecoysPool.count; i++) {
+                if ([self.userDecoysPool[i] isEqualToValue:brutxo_obj(o)]) {
+                    [self.userDecoysPool removeObjectAtIndex:i];
+                    break;
+                }
+            }
+            
+            for (int i = 0; i < self.coinbaseDecoysPool.count; i++) {
+                if ([self.coinbaseDecoysPool[i] isEqualToValue:brutxo_obj(o)]) {
+                    [self.coinbaseDecoysPool removeObjectAtIndex:i];
+                    break;
+                }
+            }
+        }
+    }
+
+    if (pblock.txHashes.count > userTxStartIdx) {
+        UInt256 temp;
+        for (int i = userTxStartIdx; i < pblock.txHashes.count; i++) {
+            [pblock.txHashes[i] getValue:&temp];
+            BRTransaction *tx = [self transactionForHash:temp];
+            if (!tx)
+                continue;
+            
+            for (int j = 0; j < tx.outputAmounts.count; j++) {
+                if ((rand() % 100) > PROBABILITY_NEW_COIN_SELECTED)
+                    continue;
+                
+                BRUTXO newOutPoint;
+                newOutPoint.hash = tx.txHash;
+                newOutPoint.n = j;
+                if ([self findUserDecoy:newOutPoint])
+                    continue;
+                
+                if (self.userDecoysPool.count >= MAX_DECOYS_POOL) {
+                    int selected = rand() % MAX_DECOYS_POOL;
+                    self.userDecoysPool[selected] = brutxo_obj(newOutPoint);
+                } else {
+                    [self.userDecoysPool addObject:brutxo_obj(newOutPoint)];
+                }
+            }
+        }
+    }
+    
+    return YES;
+}
+
 - (bool)selectDecoysAndRealIndex: (BRTransaction *_Nonnull)tx :(int *_Nonnull)myIndex :(int)ringSize {
     if (self.coinbaseDecoysPool.count <= 14) {
+        BRPeerManager *manager =  [BRPeerManager sharedInstance];
         for (int i = [self blockHeight] - COINBASE_MATURITY; i > 0; i--) {
+//        for (NSValue *b_hash in manager.blocks) {
             if (self.coinbaseDecoysPool.count > 14) break;
-            BRMerkleBlock *b = [[BRPeerManager sharedInstance] getBlockWithHeight:i];
+            BRMerkleBlock *b = [manager getBlockWithHeight:i];
             if (b) {
                 int coinbaseIdx = 0;
                 if ([self IsProofOfStake:b])
@@ -1223,11 +1396,18 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         //generate key images and choose decoys
         BRTransaction *txPrev;
         UInt256 hashBlock;
+        if (tx.inputDecoys.count <= i)
+            [tx.inputDecoys addObject:[NSMutableArray array]];
         decoys = (NSMutableArray*)tx.inputDecoys[i];
         
         txPrev = [BRPeerManager sharedInstance].publishedTx[tx.inputHashes[i]];
         if (!txPrev)
             txPrev = self.allTx[tx.inputHashes[i]];
+        if (!txPrev) {
+            UInt256 inputHashValue;
+            [tx.inputHashes[i] getValue:&inputHashValue];
+            txPrev =  [self transactionForHash:inputHashValue];
+        }
         if (!txPrev)
             return NO;
         
@@ -1301,8 +1481,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         }
     }
     
-    decoys = (NSMutableArray*)tx.inputDecoys[0];
-    *myIndex = rand() % (decoys.count + 1) - 1;
+    *myIndex = rand() % (((NSMutableArray*)tx.inputDecoys[0]).count + 1) - 1;
     
 //    for (size_t i = 0; i < tx.inputHashes.count; i++) {
 //        BRUTXO o;
@@ -1377,6 +1556,206 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     return YES;
 }
 
+- (bool)verifyRingCT:(BRTransaction *)wtxNew {
+    
+    if (wtxNew.inputHashes.count >= 30) return NO;
+    
+    secp256k1_context2 *both = BRSecp256k1_Context();
+    
+    const size_t MAX_VIN = 32;
+    const size_t MAX_DECOYS = 13;    //padding 1 for safety reasons
+    const size_t MAX_VOUT = 5;
+    
+    unsigned char allInPubKeys[MAX_VIN + 1][MAX_DECOYS + 1][33];
+    unsigned char allKeyImages[MAX_VIN + 1][33];
+    unsigned char allInCommitments[MAX_VIN][MAX_DECOYS + 1][33];
+    unsigned char allOutCommitments[MAX_VOUT][33];
+    
+    unsigned char SIJ[MAX_VIN + 1][MAX_DECOYS + 1][32];
+    unsigned char LIJ[MAX_VIN + 1][MAX_DECOYS + 1][33];
+    unsigned char RIJ[MAX_VIN + 1][MAX_DECOYS + 1][33];
+    
+    //generating LIJ and RIJ at PI
+    for (size_t j = 0; j < wtxNew.inputHashes.count; j++) {
+        memcpy(allKeyImages[j], [wtxNew.inputKeyImage[j] bytes], 33);
+    }
+    
+    //extract all public keys
+    for (int i = 0; i < wtxNew.inputHashes.count; i++) {
+        NSMutableArray *decoysForIn = [NSMutableArray array];
+        BRUTXO o;
+        [wtxNew.inputHashes[i] getValue:&o.hash];
+        o.n = [wtxNew.inputIndexes[i] unsignedIntValue];
+        [decoysForIn addObject:brutxo_obj(o)];
+        
+        NSMutableArray *decoys = (NSMutableArray*)wtxNew.inputDecoys[i];
+        for(int j = 0; j < [wtxNew.inputDecoys[i] count]; j++) {
+            [decoys[j] getValue:&o];
+            [decoysForIn addObject:brutxo_obj(o)];
+        }
+        for (int j = 0; j < [wtxNew.inputDecoys[0] count] + 1; j++) {
+            BRTransaction *txPrev;
+            [decoysForIn[j] getValue:&o];
+            txPrev = [self transactionForHash:o.hash];
+            if (!txPrev)
+                return NO;
+            
+            NSMutableData *extractedPub = [NSMutableData data];
+            [extractedPub appendPubKey:txPrev.outputScripts[o.n]];
+            if (extractedPub.length == 0) {
+                NSLog(@"Cannot extract public key from script pubkey");
+                return NO;
+            }
+            
+            memcpy(allInPubKeys[i][j], extractedPub.bytes, 33);
+            memcpy(allInCommitments[i][j], [txPrev.outputCommitment[o.n] bytes], 33);
+        }
+    }
+    
+    memcpy(allKeyImages[wtxNew.inputHashes.count], wtxNew.ntxFeeKeyImage.bytes, 33);
+    
+    for (size_t i = 0; i < [wtxNew.inputDecoys[0] count] + 1; i++) {
+        NSMutableArray *S_column = (NSMutableArray*)wtxNew.S[i];
+        for (size_t j = 0; j < wtxNew.inputHashes.count + 1; j++) {
+            UInt256 s_data;
+            [S_column[j] getValue:&s_data];
+            memcpy(SIJ[j][i], &s_data, 32);
+        }
+    }
+    
+    secp256k1_pedersen_commitment allInCommitmentsPacked[MAX_VIN][MAX_DECOYS + 1];
+    secp256k1_pedersen_commitment allOutCommitmentsPacked[MAX_VOUT + 1]; //+1 for tx fee
+    
+    for (size_t i = 0; i < wtxNew.outputAmounts.count; i++) {
+        memcpy(&(allOutCommitments[i][0]), [wtxNew.outputCommitment[i] bytes], 33);
+        if (!secp256k1_pedersen_commitment_parse(both, &allOutCommitmentsPacked[i], allOutCommitments[i])) {
+            NSLog(@"Cannot parse the commitment for inputs");
+            return NO;
+        }
+    }
+    
+    //commitment to tx fee, blind = 0
+    unsigned char txFeeBlind[32];
+    memset(txFeeBlind, 0, 32);
+    if (!secp256k1_pedersen_commit(both, &allOutCommitmentsPacked[wtxNew.outputAmounts.count], txFeeBlind, wtxNew.nTxFee, &secp256k1_generator_const_h, &secp256k1_generator_const_g)) {
+        NSLog(@"Cannot parse the commitment for transaction fee");
+        return NO;
+    }
+    
+    //filling the additional pubkey elements for decoys: allInPubKeys[wtxNew.vin.size()][..]
+    //allInPubKeys[wtxNew.vin.size()][j] = sum of allInPubKeys[..][j] + sum of allInCommitments[..][j] - sum of allOutCommitments
+    const secp256k1_pedersen_commitment *outCptr[MAX_VOUT + 1];
+    for(size_t i = 0; i < wtxNew.outputAmounts.count + 1; i++) {
+        outCptr[i] = &allOutCommitmentsPacked[i];
+    }
+    secp256k1_pedersen_commitment inPubKeysToCommitments[MAX_VIN][MAX_DECOYS + 1];
+    for(int i = 0; i < wtxNew.inputHashes.count; i++) {
+        for (int j = 0; j < [wtxNew.inputDecoys[0] count] + 1; j++) {
+            secp256k1_pedersen_serialized_pubkey_to_commitment(allInPubKeys[i][j], 33, &inPubKeysToCommitments[i][j]);
+        }
+    }
+    
+    for (int j = 0; j < [wtxNew.inputDecoys[0] count] + 1; j++) {
+        const secp256k1_pedersen_commitment *inCptr[MAX_VIN * 2];
+        for (int k = 0; k < wtxNew.inputHashes.count; k++) {
+            if (!secp256k1_pedersen_commitment_parse(both, &allInCommitmentsPacked[k][j], allInCommitments[k][j])) {
+                NSLog(@"Cannot parse the commitment for inputs");
+                return NO;
+            }
+            inCptr[k] = &allInCommitmentsPacked[k][j];
+        }
+        for (size_t k = wtxNew.inputHashes.count; k < 2*wtxNew.inputHashes.count; k++) {
+            inCptr[k] = &inPubKeysToCommitments[k - wtxNew.inputHashes.count][j];
+        }
+        secp256k1_pedersen_commitment out;
+        size_t length;
+        //convert allInPubKeys to pederson commitment to compute sum of all in public keys
+        if (!secp256k1_pedersen_commitment_sum(both, inCptr, wtxNew.inputHashes.count*2, outCptr, wtxNew.outputAmounts.count + 1, &out))
+            NSLog(@"Cannot compute sum of commitment");
+        if (!secp256k1_pedersen_commitment_to_serialized_pubkey(&out, allInPubKeys[wtxNew.inputHashes.count][j], &length))
+            NSLog(@"Cannot covert from commitment to public key");
+    }
+    
+    //verification
+    unsigned char C[32];
+    UInt256 cc = wtxNew.c;
+    memcpy(C, &cc, 32);
+    for (size_t j = 0; j < [wtxNew.inputDecoys[0] count] + 1; j++) {
+        for (size_t i = 0; i < wtxNew.inputHashes.count + 1; i++) {
+            //compute LIJ, RIJ
+            unsigned char P[33];
+            memcpy(P, allInPubKeys[i][j], 33);
+            if (!BRSecp256k1PointMul(P, C)) {
+                return NO;
+            }
+            
+            if (!BRSecp256k1PointAdd(P, SIJ[i][j])) {
+                return NO;
+            }
+            
+            memcpy(LIJ[i][j], P, 33);
+            
+            //compute RIJ
+            unsigned char sh[33];
+            NSMutableData *pkij = [NSMutableData dataWithBytes:allInPubKeys[i][j] length:33];
+            
+            [self PointHashingSuccessively:pkij :SIJ[i][j] :sh];
+            
+            unsigned char ci[33];
+            memcpy(ci, allKeyImages[i], 33);
+            if (!BRSecp256k1PointMul(ci, C)) {
+                return NO;
+            }
+            
+            //convert shp into commitment
+            secp256k1_pedersen_commitment SHP_commitment;
+            secp256k1_pedersen_serialized_pubkey_to_commitment(sh, 33, &SHP_commitment);
+            
+            //convert CI*I into commitment
+            secp256k1_pedersen_commitment cii_commitment;
+            secp256k1_pedersen_serialized_pubkey_to_commitment(ci, 33, &cii_commitment);
+            
+            const secp256k1_pedersen_commitment *twoElements[2];
+            twoElements[0] = &SHP_commitment;
+            twoElements[1] = &cii_commitment;
+            
+            secp256k1_pedersen_commitment sum;
+            if (!secp256k1_pedersen_commitment_sum_pos(both, twoElements, 2, &sum)) {
+                NSLog(@"failed to compute secp256k1_pedersen_commitment_sum_pos");
+                return NO;
+            }
+            
+            size_t tempLength;
+            if (!secp256k1_pedersen_commitment_to_serialized_pubkey(&sum, RIJ[i][j], &tempLength)) {
+                NSLog(@"failed to serialize pedersen commitment");
+                return NO;
+            }
+        }
+        
+        //compute C
+        unsigned char tempForHash[2 * (MAX_VIN + 1) * 33 + 32];
+        unsigned char* tempForHashPtr = tempForHash;
+        for (size_t i = 0; i < wtxNew.inputHashes.count + 1; i++) {
+            memcpy(tempForHashPtr, &(LIJ[i][j][0]), 33);
+            tempForHashPtr += 33;
+            memcpy(tempForHashPtr, &(RIJ[i][j][0]), 33);
+            tempForHashPtr += 33;
+        }
+        UInt256 ctsHash = wtxNew.txSignatureHash;
+        memcpy(tempForHashPtr, &ctsHash, 32);
+        
+        NSMutableData *tempp = [NSMutableData dataWithBytes:tempForHash length:2 * (wtxNew.inputHashes.count + 1) * 33 + 32];
+        UInt256 temppi1 = tempp.SHA256_2;
+        memcpy(C, &temppi1, 32);
+    }
+    
+    NSData *C_data = [NSData dataWithBytes:C length:32];
+    UInt256 ccc = wtxNew.c;
+    NSData *wtxNew_c = [NSData dataWithBytes:&ccc length:32];
+    
+    return [C_data isEqualToData:wtxNew_c];
+}
+
 - (bool)makeRingCT:(BRTransaction *_Nonnull)wtxNew :(int)ringSize {
     int myIndex;
     if (![self selectDecoysAndRealIndex:wtxNew :&myIndex :ringSize]) {
@@ -1385,12 +1764,12 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     
     secp256k1_context2 *both = BRSecp256k1_Context();
     for (int i = 0; i < wtxNew.outputAmounts.count; i++) {
-        if ([wtxNew.outputAmounts[i] unsignedLongLongValue] == 0 && wtxNew.outputScripts[i] == [NSNull null])
+        if ([wtxNew.outputAmounts[i] unsignedLongLongValue] == 0 && [wtxNew.outputScripts[i] length] == 0)
             continue;
         
         secp256k1_pedersen_commitment commitment;
-        NSData *secret = (NSData *)wtxNew.outputInMemoryRawBind[i];
-        BRKey *blind = [BRKey keyWithSecret:*(UInt256 *)secret.bytes compressed:YES];
+        BRKey *secret = (BRKey *)wtxNew.outputInMemoryRawBind[i];
+        BRKey *blind = [BRKey keyWithSecret:*secret.secretKey compressed:YES];
         if (!secp256k1_pedersen_commit(both, &commitment, (unsigned char*)blind.secretKey,
                                        [wtxNew.outputAmounts[i] unsignedLongLongValue],
                                        &secp256k1_generator_const_h, &secp256k1_generator_const_g)) {
@@ -1402,9 +1781,11 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             NSLog(@"Cannot serialize commitment");
             return NO;
         }
-        [wtxNew.outputCommitment removeAllObjects];
         NSMutableData *commitmentData = [NSMutableData dataWithBytes:output length:33];
-        [wtxNew.outputCommitment addObject:commitmentData];
+        if (wtxNew.outputCommitment.count > i)
+            [wtxNew.outputCommitment replaceObjectAtIndex:i withObject:commitmentData];
+        else
+            [wtxNew.outputCommitment addObject:commitmentData];
     }
     
     if (wtxNew.inputHashes.count >= 30) {
@@ -1472,7 +1853,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         [myInputCommiments addObject:[NSValue value:&inCommitment withObjCType:@encode(secp256k1_pedersen_commitment)]];
         uint64_t tempAmount;
         BRKey *tmp = nil;
-        [self RevealTxOutAmount:inTx :myOutpoint.n :&tempAmount :tmp];
+        [self RevealTxOutAmount:inTx :myOutpoint.n :&tempAmount :&tmp];
         memcpy(&myBlinds[myBlindsIdx][0], tmp.secretKey, 32);
         
         //verify input commitments
@@ -1497,9 +1878,9 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             [wtxNew.outputScripts[i] length] == 0)
             continue;
         
-        NSData *secret = (NSData *)wtxNew.outputInMemoryRawBind[i];
-        if (secret.length != 0)
-            memcpy(&myBlinds[myBlindsIdx][0], secret.bytes, 32);
+        BRKey *secret = (BRKey *)wtxNew.outputInMemoryRawBind[i];
+        if (secret != nil)
+            memcpy(&myBlinds[myBlindsIdx][0], secret.secretKey, 32);
         bptr[myBlindsIdx] = &myBlinds[myBlindsIdx][0];
         myBlindsIdx++;
     }
@@ -1599,11 +1980,11 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         [decoysForIn addObject:brutxo_obj(o)];
 
         NSMutableArray *decoys = (NSMutableArray*)wtxNew.inputDecoys[i];
-        for(int j = 0; j < [wtxNew.inputDecoys[i] length]; j++) {
+        for(int j = 0; j < [wtxNew.inputDecoys[i] count]; j++) {
             [decoys[j] getValue:&o];
             [decoysForIn addObject:brutxo_obj(o)];
         }
-        for (int j = 0; j < [wtxNew.inputDecoys[0] length] + 1; j++) {
+        for (int j = 0; j < [wtxNew.inputDecoys[0] count] + 1; j++) {
             if (j != PI) {
                 BRTransaction *txPrev;
                 [decoysForIn[j] getValue:&o];
@@ -1832,7 +2213,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     const unsigned char *blind_ptr[MAX_VOUT];
     if (tx.outputAmounts.count > MAX_VOUT) return false;
     for (i = 0; i < tx.outputAmounts.count; i++) {
-        memcpy(&blinds[i][0], [tx.outputInMemoryRawBind[i] bytes], 32);
+        memcpy(&blinds[i][0], ((BRKey *)tx.outputInMemoryRawBind[i]).secretKey, 32);
         blind_ptr[i] = blinds[i];
         values[i] = [tx.outputAmounts[i] unsignedLongLongValue];
     }
@@ -1897,7 +2278,8 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     }
 
     //Check checksum
-    UInt256 h = raw.SHA256_2;
+    NSMutableData *tempHash = [NSMutableData dataWithBytes:raw.bytes length:raw.length - 4];
+    UInt256 h = tempHash.SHA256_2;
     unsigned char *h_begin = (unsigned char *)&h;
     unsigned char *p_raw = (unsigned char*)raw.bytes + raw.length - 4;
     if (memcmp(h_begin, p_raw, 4) != 0) {
@@ -1989,6 +2371,9 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 {
     BRUTXO o;
     for (NSValue *output in self.utxos) {
+        if ([self.inSpendOutput objectForKey:output])
+            continue;
+        
         [output getValue:&o];
         UInt256 wtxid = o.hash;
         int i = o.n;
@@ -2005,7 +2390,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         
         uint64_t decodedAmount;
         BRKey *decodedBlind = nil;
-        [self RevealTxOutAmount:pcoin :i :&decodedAmount :decodedBlind];
+        [self RevealTxOutAmount:pcoin :i :&decodedAmount :&decodedBlind];
         if (decodedAmount == 1000000 * COIN && coin_type != ONLY_1000000)
             continue;
         
@@ -2135,9 +2520,9 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             wtxNew.nTxFee = nFeeNeeded;
             NSLog(@"nFeeNeeded=%d\n", wtxNew.nTxFee);
             if (newTxOut.nValue <= 0) return NO;
-            NSMutableData *shared = [NSMutableData data];
+            NSMutableData *shared;
             [self ComputeSharedSec:wtxNew :newTxOut.txPub :&shared];
-            [self EncodeTxOutAmount:&newTxOut :&newTxOut.nValue :shared.bytes :false];
+            [self EncodeTxOutAmount:&newTxOut :&newTxOut.nValue :shared :false];
             [wtxNew addOutput:&newTxOut];
         } else {
             return NO;
@@ -2168,6 +2553,12 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         NSLog(@"Failed to generate RingCT");
         return NO;
     }
+    
+//    //verify ringct -- debug
+//    if (![self verifyRingCT:wtxNew]) {
+//        NSLog(@"Verify RingCT failed");
+//        return NO;
+//    }
 
     if (![self generateBulletProofAggregate:wtxNew]) {
         NSLog(@"Failed to generate bulletproof");
@@ -2180,6 +2571,8 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     for (size_t i = 0; i < wtxNew.outputAmounts.count; i++) {
         [wtxNew.outputAmounts replaceObjectAtIndex:i withObject:@(0)];
     }
+    
+    [self updateSpentOutputKeyImage:wtxNew];
     
     return YES;
 }
@@ -2236,13 +2629,9 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                                            :&nFeeRequired :&control :ALL_COINS :fUseIX :0 :6 :tomyself]) {
         if (nValue + nFeeRequired > self.balance) {
             NSLog(@"Error: This transaction requires a transaction fee of at least because of its amount, complexity, or use of recently received funds!, nfee=%d, nValue=%d", nFeeRequired, nValue);
-            return NO;
         }
+        return NO;
     }
-//    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, (!fUseIX ? "tx" : "ix"))) {
-//        throw runtime_error(
-//                            "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
-//    }
 
     return YES;
 }
@@ -2333,14 +2722,14 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     for (NSValue *hash in txHashes) {
         BRTransaction *tx = self.allTx[hash];
         UInt256 h;
+        [hash getValue:&h];
+        [hashes addObject:[NSData dataWithBytes:&h length:sizeof(h)]];
         
         if (! tx || (tx.blockHeight == height && tx.timestamp == timestamp)) continue;
         tx.blockHeight = height;
         tx.timestamp = timestamp;
         
         if ([self containsTransaction:tx]) {
-            [hash getValue:&h];
-            [hashes addObject:[NSData dataWithBytes:&h length:sizeof(h)]];
             [updated addObject:hash];
             if ([self.pendingTx containsObject:hash] || [self.invalidTx containsObject:hash]) needsUpdate = YES;
         }
@@ -2357,21 +2746,23 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             @autoreleasepool {
                 NSMutableSet *entities = [NSMutableSet set];
                 
-                for (BRTransactionEntity *e in [BRTransactionEntity objectsMatching:@"txHash in %@", hashes]) {
-                    e.blockHeight = height;
-                    e.timestamp = timestamp;
-                    [entities addObject:e];
-                }
+//                for (BRTransactionEntity *e in [BRTransactionEntity objectsMatching:@"txHash in %@", hashes]) {
+//                    e.blockHeight = height;
+//                    e.timestamp = timestamp;
+//                    [entities addObject:e];
+//                }
                 
-                for (BRTxMetadataEntity *e in [BRTxMetadataEntity objectsMatching:@"txHash in %@ && type == %d", hashes,
-                                               TX_MDTYPE_MSG]) {
+                for (BRTxMetadataEntity *e in [BRTxMetadataEntity objectsMatching:@"txHash in %@", hashes]) {
                     @autoreleasepool {
                         BRTransaction *tx = e.transaction;
                         
                         tx.blockHeight = height;
                         tx.timestamp = timestamp;
-                        [e setAttributesFromTx:tx];
+                        [e setAttributesFromTx:tx :(e.type == TX_MINE_MSG)];
                         [entities addObject:e];
+                        
+                        if (e.type == TX_MINE_MSG)
+                            [self updateSpentOutputKeyImage:tx];
                     }
                 }
                 
@@ -2387,6 +2778,8 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                 }
             }
         }];
+        
+        [self updateDecoys:height];
     }
     
     return updated;
@@ -2402,7 +2795,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     for (int i = 0; i < transaction.outputAmounts.count; i++) {
         UInt64 c = 0;
         BRKey *blind;
-        [self RevealTxOutAmount:transaction :i :&c :blind];
+        [self RevealTxOutAmount:transaction :i :&c :&blind];
         
         amount += c;
     }

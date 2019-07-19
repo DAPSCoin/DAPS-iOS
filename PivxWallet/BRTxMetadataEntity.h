@@ -27,6 +27,7 @@
 #import <CoreData/CoreData.h>
 
 #define TX_MDTYPE_MSG 0x01
+#define TX_MINE_MSG 0x02
 
 @class BRTransaction;
 
@@ -36,7 +37,7 @@
 @property (nonatomic, retain) NSData *txHash;
 @property (nonatomic) int32_t type;
 
-- (instancetype)setAttributesFromTx:(BRTransaction *)tx;
+- (instancetype)setAttributesFromTx:(BRTransaction *)tx :(BOOL)isMine;
 - (BRTransaction *)transaction;
 
 @end

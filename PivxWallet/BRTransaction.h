@@ -111,6 +111,7 @@ enum {
 
 @property (nonatomic, assign) BOOL isInstant;
 @property (nonatomic, assign) BOOL fFromMe;
+@property (nonatomic, assign) BOOL isForMe;
 
 @property (nonatomic, assign) UInt256 txHash;
 @property (nonatomic, assign) uint32_t version;

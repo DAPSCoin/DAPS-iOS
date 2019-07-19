@@ -35,7 +35,7 @@
 @dynamic txHash;
 @dynamic type;
 
-- (instancetype)setAttributesFromTx:(BRTransaction *)tx
+- (instancetype)setAttributesFromTx:(BRTransaction *)tx :(BOOL)isMine
 {
     NSMutableData *data = [NSMutableData dataWithData:tx.data];
 
@@ -44,7 +44,11 @@
 
     [self.managedObjectContext performBlockAndWait:^{
         self.blob = data;
-        self.type = TX_MDTYPE_MSG;
+        if (!isMine)
+            self.type = TX_MDTYPE_MSG;
+        else
+            self.type = TX_MINE_MSG;
+        
         self.txHash = [NSData dataWithBytes:tx.txHash.u8 length:sizeof(UInt256)];
     }];
     

@@ -44,7 +44,7 @@
 #endif
 
 #define FIXED_PEERS          @"FixedPeers"
-#define PROTOCOL_TIMEOUT     20.0
+#define PROTOCOL_TIMEOUT     30.0
 #define MAX_CONNECT_FAILURES 20 // notify user of network problems after this many connect failures in a row
 #define CHECKPOINT_COUNT     (sizeof(checkpoint_array)/sizeof(*checkpoint_array))
 #define GENESIS_BLOCK_HASH   (*(UInt256 *)@(checkpoint_array[0].hash).hexToData.reverse.bytes)
@@ -287,7 +287,11 @@ static const char *dns_seeds[] = {
             self.checkpoints[@(checkpoint_array[i].height)] = uint256_obj(hash);
         }
         
-        for (BRMerkleBlockEntity *e in [BRMerkleBlockEntity allObjects]) {
+        NSFetchRequest *req = [BRMerkleBlockEntity fetchReq];
+        req.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"height" ascending:NO]];
+        req.predicate = [NSPredicate predicateWithFormat:@"height >= 0 && height != %d", BLOCK_UNKNOWN_HEIGHT];
+        req.fetchLimit = 100;
+        for (BRMerkleBlockEntity *e in [BRMerkleBlockEntity fetchObjects:req]) {
             @autoreleasepool {
                 BRMerkleBlock *b = e.merkleBlock;
                 
@@ -548,8 +552,18 @@ static const char *dns_seeds[] = {
         for (int i = CHECKPOINT_COUNT - 1; ! _lastBlock && i >= 0; i--) {
             if (i == 0 || checkpoint_array[i].timestamp + 7*24*60*60 < self.earliestKeyTime + NSTimeIntervalSince1970) {
                 UInt256 hash = *(UInt256 *)@(checkpoint_array[i].hash).hexToData.reverse.bytes;
+
+                NSFetchRequest *req = [BRMerkleBlockEntity fetchReq];
+                req.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"height" ascending:NO]];
+                req.predicate = [NSPredicate predicateWithFormat:@"blockHash = %@", [NSData dataWithBytes:&hash length:sizeof(hash)]];
+                req.fetchLimit = 1;
+                _lastBlock = [[BRMerkleBlockEntity fetchObjects:req].lastObject merkleBlock];
                 
-                _lastBlock = self.blocks[uint256_obj(hash)];
+                if (!_blocks)
+                    _blocks = [NSMutableDictionary dictionary];
+                _blocks[uint256_obj(hash)] = _lastBlock;
+                
+//                _lastBlock = self.blocks[uint256_obj(hash)];
             }
         }
         
@@ -615,7 +629,7 @@ static const char *dns_seeds[] = {
     if (self.peerCount > 1 && self.downloadPeer) [peers removeObject:self.downloadPeer];
     
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self performSelector:@selector(txTimeout:) withObject:hash afterDelay:PROTOCOL_TIMEOUT];
+        [self performSelector:@selector(txTimeout:) withObject:hash afterDelay:300.0];
         
         for (BRPeer *p in peers) {
             if (p.status != BRPeerStatusConnected) continue;
@@ -641,12 +655,12 @@ static const char *dns_seeds[] = {
 }
 
 - (BRMerkleBlock * _Nullable)getBlockWithHeight:(uint32_t)blockHeight {
-    NSValue *blockHash = self.checkpoints[@(blockHeight)];
-    if (blockHash) {
-        return self.blocks[blockHash];
-    }
-
-    return nil;
+    NSFetchRequest *req = [BRMerkleBlockEntity fetchReq];
+    
+    req.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"height" ascending:NO]];
+    req.predicate = [NSPredicate predicateWithFormat:@"height = %ld", blockHeight];
+    req.fetchLimit = 1;
+    return [[BRMerkleBlockEntity fetchObjects:req].lastObject merkleBlock];
 }
 
 // seconds since reference date, 00:00:00 01/01/01 GMT
@@ -998,8 +1012,8 @@ static const char *dns_seeds[] = {
     }
     
     [[BRMerkleBlockEntity context] performBlock:^{
-        [BRMerkleBlockEntity deleteObjects:[BRMerkleBlockEntity objectsMatching:@"! (blockHash in %@)",
-                                            blocks.allKeys]];
+//        [BRMerkleBlockEntity deleteObjects:[BRMerkleBlockEntity objectsMatching:@"! (blockHash in %@)",
+//                                            blocks.allKeys]];
         
         for (BRMerkleBlockEntity *e in [BRMerkleBlockEntity objectsMatching:@"blockHash in %@", blocks.allKeys]) {
             @autoreleasepool {
@@ -1183,7 +1197,7 @@ static const char *dns_seeds[] = {
     NSLog(@"%@:%d relayed transaction %@", peer.host, peer.port, hash);
     
     transaction.timestamp = [NSDate timeIntervalSinceReferenceDate];
-    if (syncing && ! [manager.wallet containsTransaction:transaction]) return;
+//    if (syncing && ! [manager.wallet containsTransaction:transaction]) return;
     if (! [manager.wallet registerTransaction:transaction]) return;
     if (peer == self.downloadPeer) self.lastRelayTime = [NSDate timeIntervalSinceReferenceDate];
     
@@ -1250,7 +1264,7 @@ static const char *dns_seeds[] = {
     
     NSLog(@"%@:%d has transaction %@", peer.host, peer.port, hash);
     if (! tx) tx = [manager.wallet transactionForHash:txHash];
-    if (! tx || (syncing && ! [manager.wallet containsTransaction:tx])) return;
+//    if (! tx || (syncing && ! [manager.wallet containsTransaction:tx])) return;
     if (! [manager.wallet registerTransaction:tx]) return;
     if (peer == self.downloadPeer) self.lastRelayTime = [NSDate timeIntervalSinceReferenceDate];
     
@@ -1404,19 +1418,19 @@ static const char *dns_seeds[] = {
     block.height = prev.height + 1;
     txTime = block.timestamp/2 + prev.timestamp/2;
     
-    if ((block.height % 1000) == 0) { //free up some memory from time to time
-        
-        BRMerkleBlock *b = block;
-        
-        for (uint32_t i = 0; b && i < (DGW_PAST_BLOCKS_MAX + 50); i++) {
-            b = self.blocks[uint256_obj(b.prevBlock)];
-        }
-        
-        while (b) { // free up some memory
-            b = self.blocks[uint256_obj(b.prevBlock)];
-            if (b) [self.blocks removeObjectForKey:uint256_obj(b.prevBlock)];
-        }
-    }
+//    if ((block.height % 1000) == 0) { //free up some memory from time to time
+//
+//        BRMerkleBlock *b = block;
+//
+//        for (uint32_t i = 0; b && i < (DGW_PAST_BLOCKS_MAX + 50); i++) {
+//            b = self.blocks[uint256_obj(b.prevBlock)];
+//        }
+//
+//        while (b) { // free up some memory
+//            b = self.blocks[uint256_obj(b.prevBlock)];
+//            if (b) [self.blocks removeObjectForKey:uint256_obj(b.prevBlock)];
+//        }
+//    }
     
     // verify block difficulty if block is past last checkpoint
     //if ((block.height > (checkpoint_array[CHECKPOINT_COUNT - 1].height + DGW_PAST_BLOCKS_MAX)) &&

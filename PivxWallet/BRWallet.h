@@ -90,6 +90,9 @@ typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amoun
 // NSValue objects containing UTXO structs
 @property (nonatomic, readonly) NSArray * _Nonnull unspentOutputs;
 
+@property (nonatomic, strong) NSMutableDictionary * _Nonnull spentOutputKeyImage;
+@property (nonatomic, strong) NSMutableDictionary * _Nonnull inSpendOutput;
+
 // amount reveal value
 @property (nonatomic, readonly) NSDictionary * _Nonnull amountMap;
 
@@ -178,9 +181,12 @@ typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amoun
 // true if no previous wallet transaction spends any of the given transaction's inputs, and no inputs are invalid
 - (BOOL)transactionIsValid:(BRTransaction * _Nonnull)transaction;
 
+- (bool)updateDecoys:(uint32_t)height;
+- (bool)verifyRingCT:(BRTransaction *)wtxNew;
+
 // true if the transaction is to me
 - (BOOL)IsTransactionForMe:(BRTransaction * _Nonnull)transaction;
-- (BOOL)RevealTxOutAmount:(BRTransaction * _Nonnull)transaction :(NSUInteger)outIndex :(UInt64 *_Nullable)amount :(BRKey * _Nonnull)blind;
+- (BOOL)RevealTxOutAmount:(BRTransaction * _Nonnull)transaction :(NSUInteger)outIndex :(UInt64 *_Nullable)amount :(BRKey ** _Nonnull)blind;
 - (BOOL)ComputeSharedSec:(BRTransaction * _Nonnull)transaction :(NSMutableData*)outTxPub :(NSMutableData ** _Nonnull)sharedSec;
 - (void)ECDHInfo_Decode:(unsigned char* _Nonnull)encodedMask :(unsigned char* _Nonnull)encodedAmount :(NSData * _Nonnull)sharedSec :(UInt256 * _Nonnull)decodedMask :(UInt64 * _Nonnull)decodedAmount;
 - (void)ECDHInfo_ComputeSharedSec:(const UInt256* _Nonnull)priv :(NSData* _Nonnull)pubKey :(NSMutableData** _Nonnull)sharedSec;
