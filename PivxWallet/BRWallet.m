@@ -482,7 +482,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                 if (tx.size > TX_MAX_SIZE) pending = YES; // check transaction size is under TX_MAX_SIZE
                 
                 for (NSNumber *sequence in tx.inputSequences) {
-                    if (sequence.unsignedIntValue < UINT32_MAX - 1) pending = YES; // check for replace-by-fee
+                    if (sequence.unsignedIntValue <= UINT32_MAX) pending = YES; // check for replace-by-fee
                     if (sequence.unsignedIntValue < UINT32_MAX && tx.lockTime < TX_MAX_LOCK_HEIGHT &&
                         tx.lockTime > self.bestBlockHeight + 1) pending = YES; // future lockTime
                     if (sequence.unsignedIntValue < UINT32_MAX && tx.lockTime >= TX_MAX_LOCK_HEIGHT &&
@@ -2677,16 +2677,16 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     
     // check for future lockTime or replace-by-fee: https://github.com/bitcoin/bips/blob/master/bip-0125.mediawiki
     for (NSNumber *sequence in transaction.inputSequences) {
-        if (sequence.unsignedIntValue < UINT32_MAX - 1) return YES;
+        if (sequence.unsignedIntValue <= UINT32_MAX) return YES;
         if (sequence.unsignedIntValue < UINT32_MAX && transaction.lockTime < TX_MAX_LOCK_HEIGHT &&
             transaction.lockTime > self.bestBlockHeight + 1) return YES;
         if (sequence.unsignedIntValue < UINT32_MAX && transaction.lockTime >= TX_MAX_LOCK_HEIGHT &&
             transaction.lockTime > [NSDate timeIntervalSinceReferenceDate] + NSTimeIntervalSince1970) return YES;
     }
     
-    for (NSNumber *amount in transaction.outputAmounts) { // check that no outputs are dust
-        if (amount.unsignedLongLongValue < TX_MIN_OUTPUT_AMOUNT) return YES;
-    }
+//    for (NSNumber *amount in transaction.outputAmounts) { // check that no outputs are dust
+//        if (amount.unsignedLongLongValue < TX_MIN_OUTPUT_AMOUNT) return YES;
+//    }
     
     for (NSValue *txHash in transaction.inputHashes) { // check if any inputs are known to be pending
         if ([self transactionIsPending:self.allTx[txHash]]) return YES;
@@ -2737,11 +2737,6 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     }
     
     if (hashes.count > 0) {
-        if (needsUpdate) {
-            [self sortTransactions];
-            [self updateBalance];
-        }
-        
         [self.moc performBlockAndWait:^{
             @autoreleasepool {
                 NSMutableSet *entities = [NSMutableSet set];
@@ -2778,6 +2773,11 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                 }
             }
         }];
+        
+        if (needsUpdate) {
+            [self sortTransactions];
+            [self updateBalance];
+        }
         
         [self updateDecoys:height];
     }
