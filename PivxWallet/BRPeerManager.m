@@ -422,6 +422,8 @@ static const char *dns_seeds[] = {
             o.n = [tx.inputIndexes[i++] unsignedIntValue];
             
             BRTransaction *t = [manager.wallet transactionForHash:o.hash];
+            if (!t)
+                continue;
             
             if (o.n < t.outputAddresses.count && [manager.wallet containsAddress:t.outputAddresses[o.n]]) {
                 [inputs addObject:brutxo_data(o)];
@@ -581,6 +583,9 @@ static const char *dns_seeds[] = {
 // adds transaction to list of tx to be published, along with any unconfirmed inputs
 - (void)addTransactionToPublishList:(BRTransaction *)transaction
 {
+    if (!transaction)
+        return;
+    
     if (transaction.blockHeight == TX_UNCONFIRMED) {
         NSLog(@"[BRPeerManager] add transaction to publish list %@", transaction);
         self.publishedTx[uint256_obj(transaction.txHash)] = transaction;
@@ -843,7 +848,8 @@ static const char *dns_seeds[] = {
                 
                 for (NSValue *hash in tx.inputHashes) { // only recommend a rescan if all inputs are confirmed
                     [hash getValue:&h];
-                    if ([manager.wallet transactionForHash:h].blockHeight != TX_UNCONFIRMED) continue;
+                    BRTransaction *prev = [manager.wallet transactionForHash:h];
+                    if (prev && prev.blockHeight != TX_UNCONFIRMED) continue;
                     rescan = NO;
                     break;
                 }
@@ -1265,6 +1271,7 @@ static const char *dns_seeds[] = {
     NSLog(@"%@:%d has transaction %@", peer.host, peer.port, hash);
     if (! tx) tx = [manager.wallet transactionForHash:txHash];
 //    if (! tx || (syncing && ! [manager.wallet containsTransaction:tx])) return;
+    if (!tx) return;
     if (! [manager.wallet registerTransaction:tx]) return;
     if (peer == self.downloadPeer) self.lastRelayTime = [NSDate timeIntervalSinceReferenceDate];
     
@@ -1338,7 +1345,8 @@ static const char *dns_seeds[] = {
             UInt256 h = UINT256_ZERO;
             
             [hash getValue:&h];
-            if ([manager.wallet transactionForHash:h].blockHeight == TX_UNCONFIRMED) return;
+            BRTransaction *prev = [manager.wallet transactionForHash:h];
+            if (prev && prev.blockHeight == TX_UNCONFIRMED) return;
         }
         
         [self peerMisbehavin:peer];

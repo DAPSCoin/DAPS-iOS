@@ -54,7 +54,8 @@ FOUNDATION_EXPORT NSString* _Nonnull const BRWalletBalanceChangedNotification;
 //#define MIN_FEE_PER_KB     ((TX_FEE_PER_KB*1000 + 190)/191) // minimum relay fee on a 191byte tx
 #define MAX_FEE_PER_KB     (1 * COIN)
 
-#define MAX_DECOYS_POOL 500
+#define MAX_DECOYS_POOL 300
+#define MAX_BLOCK_COUNT 500
 #define PROBABILITY_NEW_COIN_SELECTED 70
 #define COINBASE_MATURITY 100
 

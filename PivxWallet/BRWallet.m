@@ -31,6 +31,7 @@
 #import "BRTxInputEntity.h"
 #import "BRTxOutputEntity.h"
 #import "BRTxMetadataEntity.h"
+#import "BRMerkleBlockEntity.h"
 #import "BRPeerManager.h"
 #import "BRKeySequence.h"
 #import "BRMerkleBlock.h"
@@ -161,7 +162,9 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             e.internal = NO;
         }
         
-//        int a = [BRTxMetadataEntity countAllObjects];
+        int numBlocks = [BRMerkleBlockEntity countAllObjects];
+        int numTransactions = [BRTxMetadataEntity countAllObjects];
+        
 //            [BRTxMetadataEntity deleteObjects:[BRTxMetadataEntity allObjects]];
 //            [BRTxMetadataEntity saveContext];
 //            return;
@@ -399,7 +402,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         NSData *value = [self.spentOutputKeyImage objectForKey:brutxo_obj(o)];
         if (!value) {
             BRTransaction *prev = [self transactionForHash:o.hash];
-            if ([self IsTransactionForMe:prev]) {
+            if (prev && [self IsTransactionForMe:prev]) {
                 NSMutableData *ki = [NSMutableData data];
                 if ([self generateKeyImage:prev.outputScripts[o.n] :ki]) {
                     if ([ki isEqualToData:tx.inputKeyImage[i]]) {
@@ -424,7 +427,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                     continue;
                 
                 BRTransaction *prev = [self transactionForHash:o.hash];
-                if ([self IsTransactionForMe:prev]) {
+                if (prev && [self IsTransactionForMe:prev]) {
                     NSMutableData *ki = [NSMutableData data];
                     if ([self generateKeyImage:prev.outputScripts[o.n] :ki]) {
                         if ([ki isEqualToData:tx.inputKeyImage[i]]) {
@@ -449,6 +452,9 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     NSMutableSet *spentOutputs = [NSMutableSet set], *invalidTx = [NSMutableSet set], *pendingTx = [NSMutableSet set];
     NSMutableArray *balanceHistory = [NSMutableArray array];
     uint32_t now = [NSDate timeIntervalSinceReferenceDate] + NSTimeIntervalSince1970;
+    
+    //remove unnecessary chain data to reduce storing size.
+    [self removeChainData];
     
     for (BRTransaction *tx in [self.transactions reverseObjectEnumerator]) {
         @autoreleasepool {
@@ -1046,6 +1052,58 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     }
     
     return YES;
+}
+
+- (void)removeChainData {
+    int lastHeight = self.blockHeight;
+    NSMutableArray *removableHashes = [NSMutableArray array];
+    
+    [self.moc performBlockAndWait:^{
+        int numBlocks = [BRMerkleBlockEntity countAllObjects];
+        if (numBlocks < MAX_BLOCK_COUNT * 2)
+            return;
+        
+        for (BRTxMetadataEntity *e in [BRTxMetadataEntity allObjects]) {
+            @autoreleasepool {
+                if (e.type == TX_MINE_MSG) continue;
+                
+                BRTransaction *tx = e.transaction;
+                if (! tx) continue;
+                if (tx.blockHeight == TX_UNCONFIRMED || tx.blockHeight >= lastHeight - MAX_BLOCK_COUNT) continue;
+                
+                bool isNeeded = false;
+                for (NSValue *output in self.coinbaseDecoysPool) {
+                    BRUTXO o;
+                    [output getValue:&o];
+                    if (uint256_eq(o.hash, tx.txHash)) {
+                        isNeeded = true;
+                        break;
+                    }
+                }
+                if (isNeeded) continue;
+                
+                isNeeded = false;
+                for (NSValue *output in self.userDecoysPool) {
+                    BRUTXO o;
+                    [output getValue:&o];
+                    if (uint256_eq(o.hash, tx.txHash)) {
+                        isNeeded = true;
+                        break;
+                    }
+                }
+                if (isNeeded) continue;
+                
+                UInt256 h = tx.txHash;
+                [removableHashes addObject:[NSData dataWithBytes:&h length:sizeof(h)]];
+            }
+        }
+        
+        [BRTxMetadataEntity deleteObjects:[BRTxMetadataEntity objectsMatching:@"txHash in %@", removableHashes]];
+        [BRTxMetadataEntity saveContext];
+        
+        [BRMerkleBlockEntity deleteObjects:[BRMerkleBlockEntity objectsMatching:@"height < %d && height != %d", lastHeight - MAX_BLOCK_COUNT]];
+        [BRMerkleBlockEntity saveContext];
+    }];
 }
 
 - (void)ecdhDecode:(unsigned char *)masked :(unsigned char *)amount :(NSData *)sharedSec {
