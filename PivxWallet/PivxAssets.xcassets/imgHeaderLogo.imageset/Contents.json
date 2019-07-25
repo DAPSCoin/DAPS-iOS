@@ -2,17 +2,17 @@
   "images" : [
     {
       "idiom" : "universal",
-      "filename" : "imgHeaderLogo.png",
+      "filename" : "dapsico.png",
       "scale" : "1x"
     },
     {
       "idiom" : "universal",
-      "filename" : "imgHeaderLogo@2x.png",
+      "filename" : "dapsico-1.png",
       "scale" : "2x"
     },
     {
       "idiom" : "universal",
-      "filename" : "imgHeaderLogo@3x.png",
+      "filename" : "dapsico-2.png",
       "scale" : "3x"
     }
   ],

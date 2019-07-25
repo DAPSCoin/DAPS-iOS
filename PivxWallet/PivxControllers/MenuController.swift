@@ -15,10 +15,15 @@ class MenuController: BaseController {
     @IBOutlet weak var titleLabel3: UILabel!
     @IBOutlet weak var titleLabel4: UILabel!
     
+    @IBOutlet weak var titleImg1: UIImageView!
+    @IBOutlet weak var titleImg2: UIImageView!
+    @IBOutlet weak var titleImg3: UIImageView!
+    @IBOutlet weak var titleImg4: UIImageView!
+    
     
     @IBOutlet weak var syncImageView: UIImageView!
-    @IBOutlet weak var syncLabel: UILabel!
-    @IBOutlet weak var versionLabel: UILabel!
+//    @IBOutlet weak var syncLabel: UILabel!
+//    @IBOutlet weak var versionLabel: UILabel!
     @IBOutlet weak var cotainerViewHeightConstraint: NSLayoutConstraint!
     var optionSelected:Int = 1
     
@@ -47,11 +52,35 @@ class MenuController: BaseController {
             object: nil)
     }
     
+    override func viewDidLayoutSubviews() {
+        var gradient:CAGradientLayer!
+        gradient = CAGradientLayer.init()
+        
+        gradient.frame = self.view.bounds;
+        gradient.colors = [UIColor.rgb(93, green: 0, blue: 86).cgColor, UIColor.rgb(13,  green: 0, blue: 17).cgColor];
+        
+        self.view.layer.insertSublayer(gradient, at: 0)
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        var templateImage = titleImg1.image?.withRenderingMode(.alwaysTemplate)
+        titleImg1.image = templateImage
+        
+        templateImage = titleImg2.image?.withRenderingMode(.alwaysTemplate)
+        titleImg2.image = templateImage
+        
+        templateImage = titleImg3.image?.withRenderingMode(.alwaysTemplate)
+        titleImg3.image = templateImage
+        
+        templateImage = titleImg4.image?.withRenderingMode(.alwaysTemplate)
+        titleImg4.image = templateImage
+        
+        
         let dictionary = Bundle.main.infoDictionary!
         let version = dictionary["CFBundleShortVersionString"] as! String
-        versionLabel.text = "v" + version
+//        versionLabel.text = "v" + version
     }
     
     /**
@@ -75,19 +104,31 @@ class MenuController: BaseController {
         optionSelected = 1
         selectTitle()
     }
-    @IBAction func tappedAddressBookButton(_ sender: Any) {
+    @IBAction func tappedSendButton(_ sender: Any) {
         if optionSelected == 2 {
             slideMenuController()?.closeLeft()
             return
         }
-        let controller = AddressContactController()
+//        let controller = AddressContactController()
+        let controller = SendController.shared
         let navigation = UINavigationController(rootViewController: controller)
         slideMenuController()?.changeMainViewController(navigation, close: true)
         optionSelected = 2
         selectTitle()
     }
-    @IBAction func tappedSettingButton(_ sender: Any) {
+    @IBAction func tappedReceiveButton(_ sender: Any) {
         if optionSelected == 3 {
+            slideMenuController()?.closeLeft()
+            return
+        }
+        let controller = ReceiveController.shared
+        let navigation = UINavigationController(rootViewController: controller)
+        slideMenuController()?.changeMainViewController(navigation, close: true)
+        optionSelected = 3
+        selectTitle()
+    }
+    @IBAction func tappedSettingButton(_ sender: Any) {
+        if optionSelected == 4 {
             slideMenuController()?.closeLeft()
             return
         }
@@ -95,39 +136,48 @@ class MenuController: BaseController {
         //let controller = TxHistoryController.shared
         let nav = UINavigationController(rootViewController: controller)
         slideMenuController()?.changeMainViewController(nav, close: true)
-        optionSelected = 3
-        selectTitle()
-    }
-    @IBAction func tappedDonationButton(_ sender: Any) {
-        if optionSelected == 4 {
-            slideMenuController()?.closeLeft()
-            return
-        }
-        let controller = DonationController(nibName:"Donation", bundle:nil)
-        let navigation = UINavigationController(rootViewController: controller)
-        slideMenuController()?.changeMainViewController(navigation, close: true)
         optionSelected = 4
         selectTitle()
     }
+//    @IBAction func tappedDonationButton(_ sender: Any) {
+//        if optionSelected == 4 {
+//            slideMenuController()?.closeLeft()
+//            return
+//        }
+//        let controller = DonationController(nibName:"Donation", bundle:nil)
+//        let navigation = UINavigationController(rootViewController: controller)
+//        slideMenuController()?.changeMainViewController(navigation, close: true)
+//        optionSelected = 4
+//        selectTitle()
+//    }
     
     func selectTitle(){
-        titleLabel1.textColor = K.color.gray_r155g155b155
-        titleLabel2.textColor = K.color.gray_r155g155b155
-        titleLabel3.textColor = K.color.gray_r155g155b155
-        titleLabel4.textColor = K.color.gray_r155g155b155
+        titleLabel1.textColor = UIColor.white
+        titleLabel2.textColor = UIColor.white
+        titleLabel3.textColor = UIColor.white
+        titleLabel4.textColor = UIColor.white
+        
+        titleImg1.tintColor = UIColor.white
+        titleImg2.tintColor = UIColor.white
+        titleImg3.tintColor = UIColor.white
+        titleImg4.tintColor = UIColor.white
         
         switch optionSelected {
         case 1:
-            titleLabel1.textColor = K.color.purple_r85g71b108
+            titleLabel1.textColor = K.color.c70fbff
+            titleImg1.tintColor = K.color.c70fbff
             break
         case 2:
-            titleLabel2.textColor = K.color.purple_r85g71b108
+            titleLabel2.textColor = K.color.c70fbff
+            titleImg2.tintColor = K.color.c70fbff
             break
         case 3:
-            titleLabel3.textColor = K.color.purple_r85g71b108
+            titleLabel3.textColor = K.color.c70fbff
+            titleImg3.tintColor = K.color.c70fbff
             break
         case 4:
-            titleLabel4.textColor = K.color.purple_r85g71b108
+            titleLabel4.textColor = K.color.c70fbff
+            titleImg4.tintColor = K.color.c70fbff
             break
         default:
             print("default")
@@ -137,7 +187,7 @@ class MenuController: BaseController {
     
     @objc func updateSync(){
         let progress:Double = (BRPeerManager.sharedInstance()?.syncProgress)!;
-        syncLabel.text = String.init(format: "Syncing %0.1f%%", (progress > 0.1 ? progress - 0.1 : 0.0)*111.0);
+//        syncLabel.text = String.init(format: "Syncing %0.1f%%", (progress > 0.1 ? progress - 0.1 : 0.0)*111.0);
     }
     
     @objc func syncStarted(){
@@ -154,7 +204,7 @@ class MenuController: BaseController {
     @objc func syncFinished(){
         print("Sync finished!");
         stopTimer();
-        syncLabel.text = "Synced";
+//        syncLabel.text = "Synced";
     }
     
     func stopTimer() {
@@ -163,7 +213,7 @@ class MenuController: BaseController {
     
     @objc func syncFailed(){
         print("Sync failed!");
-        syncLabel.text = "Not connection";
+//        syncLabel.text = "Not connection";
     }
     
     

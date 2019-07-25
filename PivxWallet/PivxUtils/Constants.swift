@@ -22,7 +22,8 @@ struct K {
         static let black_r58g58b58 = UIColor.rgb(58, green: 58, blue: 58)
         static let purple_r85g71b108 = UIColor.rgb(85, green: 71, blue: 108)
         static let gray_r207g208b209 = UIColor.rgb(207, green: 208, blue: 209)
-        static let gray_r155g155b155 = UIColor.rgb(155, green: 155, blue: 155)
+        static let gray_r155g155b155 = UIColor.rgb(160, green: 155, blue: 155)
+        static let c70fbff = UIColor.rgb(112, green: 251, blue: 255)
         static let gree_r0g150b136 = UIColor.rgb(0, green: 150, blue: 136)
         
     }

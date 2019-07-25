@@ -30,6 +30,7 @@
 #import "BRKeySequence.h"
 #import "BRTransaction.h"
 #import "BRTransactionEntity.h"
+#import "BRTxMetadataEntity.h"
 #import "BRMerkleBlock.h"
 #import "BRMerkleBlockEntity.h"
 #import "BRWalletManager.h"
@@ -568,6 +569,13 @@ static const char *dns_seeds[] = {
 //                _lastBlock = self.blocks[uint256_obj(hash)];
             }
         }
+        [[BRMerkleBlockEntity context] performBlockAndWait:^{
+            [BRMerkleBlockEntity deleteObjects:[BRMerkleBlockEntity allObjects]];
+            [BRMerkleBlockEntity saveContext];
+            
+            [BRTxMetadataEntity deleteObjects:[BRTxMetadataEntity allObjects]];
+            [BRTxMetadataEntity saveContext];
+        }];
         
         if (self.downloadPeer) { // disconnect the current download peer so a new random one will be selected
             [self.peers removeObject:self.downloadPeer];

@@ -2,12 +2,12 @@
   "images" : [
     {
       "idiom" : "universal",
-      "filename" : "icQrCode.png",
+      "filename" : "qrcode.png",
       "scale" : "1x"
     },
     {
       "idiom" : "universal",
-      "filename" : "icQrCode@2x.png",
+      "filename" : "qrcode-1.png",
       "scale" : "2x"
     },
     {
