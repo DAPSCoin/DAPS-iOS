@@ -24,8 +24,7 @@
 //  THE SOFTWARE.
 
 #import "BRRootViewController.h"
-#import "BRReceiveViewController.h"
-#import "BRSendViewController.h"
+#import "BRSyncViewController.h"
 #import "BRSettingsViewController.h"
 #import "BRTxHistoryViewController.h"
 #import "BRRestoreViewController.h"
@@ -58,10 +57,8 @@
 
 @interface BRRootViewController ()
 
-@property (nonatomic, strong) IBOutlet UIProgressView *progress, *pulse;
-@property (nonatomic, strong) IBOutlet UIView *errorBar, *splash, *logo, *blur;
+@property (nonatomic, strong) IBOutlet UIView *errorBar, *splash, *blur;
 @property (nonatomic, strong) IBOutlet UIGestureRecognizer *navBarTap;
-@property (nonatomic, strong) IBOutlet UIBarButtonItem *lock;
 @property (nonatomic, strong) IBOutlet BRBouncyBurgerButton *burger;
 @property (nonatomic, strong) IBOutlet NSLayoutConstraint *wallpaperXLeft;
 
@@ -78,7 +75,6 @@
 @property (nonatomic, assign) NSTimeInterval timeout, start;
 @property (nonatomic, assign) SystemSoundID pingsound;
 @property (nonatomic, assign) int navigationTypeButton;
-@property (nonatomic, strong) UIView *buttonContainer;
 
 @end
 
@@ -102,6 +98,8 @@
     [super viewDidLoad];
     _navigationTypeButton = 0;
     self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+    self.navigationItem.title = @"DAPSCOIN";
+    
     // Do any additional setup after loading the view.
     
     // detect jailbreak so we can throw up an idiot warning, in viewDidLoad so it can't easily be swizzled out
@@ -124,207 +122,170 @@
     self.pageViewController = [self.storyboard instantiateViewControllerWithIdentifier:@"PageViewController"];
     
     
-    //self.pageViewController.dataSource = self;
     
-    UIColor *purple = [UIColor rgb:85 green:71 blue:108 alpha:1];
-    
-    CGFloat y = self.view.frame.size.height - 114;
-    if ([[Utils deviceType] isEqualToString:@"iphoneX"]) {
-        y = y - 42;
-    } else if ([[Utils deviceType] isEqualToString:@"iphoneXRSMAX"]) {
-        y = y - 42;
-    }
-    CGFloat width = self.view.frame.size.width;
-    self.buttonContainer = [[UIView alloc] initWithFrame:CGRectMake(0, y, width, 50)];
-    self.buttonContainer.backgroundColor = UIColor.whiteColor;
-    
-    UIButton *receive = [[UIButton alloc] initWithFrame:CGRectMake(0, 0, width/2, 50)];
-    [receive setTitle:@"RECEIVE" forState:UIControlStateNormal];
-    [receive setTintColor:UIColor.whiteColor];
-    [receive setBackgroundColor:purple];
-    [receive addTarget:self action:@selector(tappedReceiveButton) forControlEvents:UIControlEventTouchUpInside];
-    
-    UIButton *send = [[UIButton alloc] initWithFrame:CGRectMake((width/2) + 1 , 0, (width/2) - 1, 50)];
-    [send setTitle:@"SEND" forState:UIControlStateNormal];
-    [send setTintColor:UIColor.whiteColor];
-    [send setBackgroundColor:purple];
-    [send addTarget:self action:@selector(tappedSendButton) forControlEvents:UIControlEventTouchUpInside];
-    
-    [self.buttonContainer addSubview:send];
-    [self.buttonContainer addSubview:receive];
-    
-    [self.view addSubview:self.buttonContainer];
-    
-    y = self.view.frame.size.height - 50;
-    [self.pageViewController setViewControllers:@[TxHistoryController.shared]
+//    [self.pageViewController setViewControllers:@[TxHistoryController.shared]
+//                                      direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
+    [self.pageViewController setViewControllers:@[HomeController.shared]
                                       direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
-    self.pageViewController.view.frame = CGRectMake(0, 0, self.view.frame.size.width, y);
+        
+    self.pageViewController.view.frame = CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
     [self addChildViewController:self.pageViewController];
     [self.view insertSubview:self.pageViewController.view belowSubview:self.splash];
     [self.pageViewController didMoveToParentViewController:self];
     
     self.shouldShowTips = TRUE;
     
-    for (UIView *view in self.pageViewController.view.subviews) {
-        if (! [view isKindOfClass:[UIScrollView class]]) continue;
-        self.scrollView = (id)view;
-        self.scrollView.delegate = self;
-        break;
-    }
-    
     [self addErrorView];
     
     BRWalletManager *manager = [BRWalletManager sharedInstance];
     
-    if (self.urlObserver == nil ) {
-        self.urlObserver =
-        [[NSNotificationCenter defaultCenter] addObserverForName:BRURLNotification object:nil queue:nil
-                                                  usingBlock:^(NSNotification *note) {
-                                                      if (! manager.noWallet) {
-                                                          if (self.navigationController.topViewController != self) {
-                                                              [self.navigationController popToRootViewControllerAnimated:YES];
-                                                          }
-                                                          
-                                                          if (self.navigationController.presentedViewController) {
-                                                              [self.navigationController dismissViewControllerAnimated:YES completion:nil];
-                                                          }
-                                                          
-                                                          NSURL * url = note.userInfo[@"url"];
-                                                          
-                                                          
-                                                          
-                                                          
-                                                          BRSendViewController *c = self.sendViewController;
-                                                          
-                                                          [self.pageViewController setViewControllers:(c ? @[c] : @[])
-                                                                                            direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:^(BOOL finished) {
-                                                                                                _url = note.userInfo[@"url"];
-                                                                                                
-                                                                                                if (self.didAppear && [UIApplication sharedApplication].protectedDataAvailable) {
-                                                                                                    _url = nil;
-                                                                                                    [c performSelector:@selector(handleURL:) withObject:note.userInfo[@"url"] afterDelay:0.0];
-                                                                                                }
-                                                                                            }];
-                                                          
-                                                      }
-                                                  }];
-    }
-    if (self.fileObserver == nil) {
-    self.fileObserver =
-    [[NSNotificationCenter defaultCenter] addObserverForName:BRFileNotification object:nil queue:nil
-                                                  usingBlock:^(NSNotification *note) {
-                                                      if (! manager.noWallet) {
-                                                          if (self.navigationController.topViewController != self) {
-                                                              [self.navigationController popToRootViewControllerAnimated:YES];
-                                                          }
-                                                          
-                                                          if (self.navigationController.presentedViewController) {
-                                                              [self.navigationController dismissViewControllerAnimated:YES completion:nil];
-                                                          }
-                                                          
-                                                          BRSendViewController *sendController = self.sendViewController;
-                                                          
-                                                          [self.pageViewController setViewControllers:(sendController ? @[sendController] : @[])
-                                                                                            direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:^(BOOL finished) {
-                                                                                                _file = note.userInfo[@"file"];
-                                                                                                
-                                                                                                if (self.didAppear && [UIApplication sharedApplication].protectedDataAvailable) {
-                                                                                                    _file = nil;
-                                                                                                    [sendController handleFile:note.userInfo[@"file"]];
-                                                                                                }
-                                                                                            }];
-                                                      }
-                                                  }];
-    }
-    if (self.foregroundObserver == nil) {
-    self.foregroundObserver =
-    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification object:nil
-                                                       queue:nil usingBlock:^(NSNotification *note) {
-                                                           if (! manager.noWallet) {
-                                                               BREventManager *eventMan = [BREventManager sharedEventManager];
-                                                               
-                                                               [[BRPeerManager sharedInstance] connect];
-                                                               [self.sendViewController updateClipboardText];
-                                                               
-                                                               if (eventMan.isInSampleGroup && ! eventMan.hasAskedForPermission) {
-                                                                   [eventMan acquireUserPermissionInViewController:self.navigationController withCallback:nil];
-                                                               }
-                                                               else {
-                                                                   NSString *userDefaultsKey = @"has_asked_for_push";
-                                                                   [[NSUserDefaults standardUserDefaults] setBool:TRUE forKey:userDefaultsKey];
-                                                                   ([(id)[UIApplication sharedApplication].delegate registerForPushNotifications]);
-                                                               }
-                                                           }
-                                                           
-                                                           if (jailbroken && manager.wallet.totalReceived > 0) {
-                                                               UIAlertController * alert = [UIAlertController
-                                                                                            alertControllerWithTitle:NSLocalizedString(@"WARNING", nil)
-                                                                                            message:NSLocalizedString(@"DEVICE SECURITY COMPROMISED\n"
-                                                                                                                      "Any 'jailbreak' app can access any other app's keychain data "
-                                                                                                                      "(and steal your PIV). "
-                                                                                                                      "Wipe this wallet immediately and restore on a secure device.", nil)
-                                                                                            preferredStyle:UIAlertControllerStyleAlert];
-                                                               UIAlertAction* ignoreButton = [UIAlertAction
-                                                                                              actionWithTitle:NSLocalizedString(@"ignore", nil)
-                                                                                              style:UIAlertActionStyleCancel
-                                                                                              handler:^(UIAlertAction * action) {
-                                                                                                  
-                                                                                              }];
-                                                               UIAlertAction* wipeButton = [UIAlertAction
-                                                                                            actionWithTitle:NSLocalizedString(@"wipe", nil)
-                                                                                            style:UIAlertActionStyleDestructive
-                                                                                            handler:^(UIAlertAction * action) {
-                                                                                                BRRestoreViewController *restoreController =
-                                                                                                [self.storyboard instantiateViewControllerWithIdentifier:@"WipeViewController"];
-                                                                                                
-                                                                                                [self.navigationController pushViewController:restoreController animated:NO];
-                                                                                            }];
-                                                               
-                                                               [alert addAction:ignoreButton];
-                                                               [alert addAction:wipeButton];
-                                                               [self presentViewController:alert animated:YES completion:nil];
-                                                           }
-                                                           else if (jailbroken) {
-                                                               UIAlertController * alert = [UIAlertController
-                                                                                            alertControllerWithTitle:NSLocalizedString(@"WARNING", nil)
-                                                                                            message:NSLocalizedString(@"DEVICE SECURITY COMPROMISED\n"
-                                                                                                                      "Any 'jailbreak' app can access any other app's keychain data "
-                                                                                                                      "(and steal your dash).", nil)
-                                                                                            preferredStyle:UIAlertControllerStyleAlert];
-                                                               UIAlertAction* ignoreButton = [UIAlertAction
-                                                                                              actionWithTitle:NSLocalizedString(@"ignore", nil)
-                                                                                              style:UIAlertActionStyleCancel
-                                                                                              handler:^(UIAlertAction * action) {
-                                                                                                  
-                                                                                              }];
-                                                               UIAlertAction* closeButton = [UIAlertAction
-                                                                                             actionWithTitle:NSLocalizedString(@"close app", nil)
-                                                                                             style:UIAlertActionStyleDefault
-                                                                                             handler:^(UIAlertAction * action) {
-                                                                                                 exit(0);
-                                                                                             }];
-                                                               
-                                                               [alert addAction:ignoreButton];
-                                                               [alert addAction:closeButton];
-                                                               [self presentViewController:alert animated:YES completion:nil];
-                                                           }
-                                                           if (self.navigationTypeButton == 0){
-                                                               [self addAddressButton];
-                                                           } else {
-                                                               [self addSendButton];
-                                                           }
-                                                       }];
-    }
+//    if (self.urlObserver == nil ) {
+//        self.urlObserver =
+//        [[NSNotificationCenter defaultCenter] addObserverForName:BRURLNotification object:nil queue:nil
+//                                                  usingBlock:^(NSNotification *note) {
+//                                                      if (! manager.noWallet) {
+//                                                          if (self.navigationController.topViewController != self) {
+//                                                              [self.navigationController popToRootViewControllerAnimated:YES];
+//                                                          }
+//
+//                                                          if (self.navigationController.presentedViewController) {
+//                                                              [self.navigationController dismissViewControllerAnimated:YES completion:nil];
+//                                                          }
+//
+//                                                          NSURL * url = note.userInfo[@"url"];
+//
+//
+//
+//
+//                                                          BRSendViewController *c = self.sendViewController;
+//
+//                                                          [self.pageViewController setViewControllers:(c ? @[c] : @[])
+//                                                                                            direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:^(BOOL finished) {
+//                                                                                                _url = note.userInfo[@"url"];
+//
+//                                                                                                if (self.didAppear && [UIApplication sharedApplication].protectedDataAvailable) {
+//                                                                                                    _url = nil;
+//                                                                                                    [c performSelector:@selector(handleURL:) withObject:note.userInfo[@"url"] afterDelay:0.0];
+//                                                                                                }
+//                                                                                            }];
+//
+//                                                      }
+//                                                  }];
+//    }
+//    if (self.fileObserver == nil) {
+//    self.fileObserver =
+//    [[NSNotificationCenter defaultCenter] addObserverForName:BRFileNotification object:nil queue:nil
+//                                                  usingBlock:^(NSNotification *note) {
+//                                                      if (! manager.noWallet) {
+//                                                          if (self.navigationController.topViewController != self) {
+//                                                              [self.navigationController popToRootViewControllerAnimated:YES];
+//                                                          }
+//
+//                                                          if (self.navigationController.presentedViewController) {
+//                                                              [self.navigationController dismissViewControllerAnimated:YES completion:nil];
+//                                                          }
+//
+//                                                          BRSendViewController *sendController = self.sendViewController;
+//
+//                                                          [self.pageViewController setViewControllers:(sendController ? @[sendController] : @[])
+//                                                                                            direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:^(BOOL finished) {
+//                                                                                                _file = note.userInfo[@"file"];
+//
+//                                                                                                if (self.didAppear && [UIApplication sharedApplication].protectedDataAvailable) {
+//                                                                                                    _file = nil;
+//                                                                                                    [sendController handleFile:note.userInfo[@"file"]];
+//                                                                                                }
+//                                                                                            }];
+//                                                      }
+//                                                  }];
+//    }
+//    if (self.foregroundObserver == nil) {
+//    self.foregroundObserver =
+//    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification object:nil
+//                                                       queue:nil usingBlock:^(NSNotification *note) {
+//                                                           if (! manager.noWallet) {
+//                                                               BREventManager *eventMan = [BREventManager sharedEventManager];
+//
+//                                                               [[BRPeerManager sharedInstance] connect];
+//                                                               [self.sendViewController updateClipboardText];
+//
+//                                                               if (eventMan.isInSampleGroup && ! eventMan.hasAskedForPermission) {
+//                                                                   [eventMan acquireUserPermissionInViewController:self.navigationController withCallback:nil];
+//                                                               }
+//                                                               else {
+//                                                                   NSString *userDefaultsKey = @"has_asked_for_push";
+//                                                                   [[NSUserDefaults standardUserDefaults] setBool:TRUE forKey:userDefaultsKey];
+//                                                                   ([(id)[UIApplication sharedApplication].delegate registerForPushNotifications]);
+//                                                               }
+//                                                           }
+//
+//                                                           if (jailbroken && manager.wallet.totalReceived > 0) {
+//                                                               UIAlertController * alert = [UIAlertController
+//                                                                                            alertControllerWithTitle:NSLocalizedString(@"WARNING", nil)
+//                                                                                            message:NSLocalizedString(@"DEVICE SECURITY COMPROMISED\n"
+//                                                                                                                      "Any 'jailbreak' app can access any other app's keychain data "
+//                                                                                                                      "(and steal your PIV). "
+//                                                                                                                      "Wipe this wallet immediately and restore on a secure device.", nil)
+//                                                                                            preferredStyle:UIAlertControllerStyleAlert];
+//                                                               UIAlertAction* ignoreButton = [UIAlertAction
+//                                                                                              actionWithTitle:NSLocalizedString(@"ignore", nil)
+//                                                                                              style:UIAlertActionStyleCancel
+//                                                                                              handler:^(UIAlertAction * action) {
+//
+//                                                                                              }];
+//                                                               UIAlertAction* wipeButton = [UIAlertAction
+//                                                                                            actionWithTitle:NSLocalizedString(@"wipe", nil)
+//                                                                                            style:UIAlertActionStyleDestructive
+//                                                                                            handler:^(UIAlertAction * action) {
+//                                                                                                BRRestoreViewController *restoreController =
+//                                                                                                [self.storyboard instantiateViewControllerWithIdentifier:@"WipeViewController"];
+//
+//                                                                                                [self.navigationController pushViewController:restoreController animated:NO];
+//                                                                                            }];
+//
+//                                                               [alert addAction:ignoreButton];
+//                                                               [alert addAction:wipeButton];
+//                                                               [self presentViewController:alert animated:YES completion:nil];
+//                                                           }
+//                                                           else if (jailbroken) {
+//                                                               UIAlertController * alert = [UIAlertController
+//                                                                                            alertControllerWithTitle:NSLocalizedString(@"WARNING", nil)
+//                                                                                            message:NSLocalizedString(@"DEVICE SECURITY COMPROMISED\n"
+//                                                                                                                      "Any 'jailbreak' app can access any other app's keychain data "
+//                                                                                                                      "(and steal your dash).", nil)
+//                                                                                            preferredStyle:UIAlertControllerStyleAlert];
+//                                                               UIAlertAction* ignoreButton = [UIAlertAction
+//                                                                                              actionWithTitle:NSLocalizedString(@"ignore", nil)
+//                                                                                              style:UIAlertActionStyleCancel
+//                                                                                              handler:^(UIAlertAction * action) {
+//
+//                                                                                              }];
+//                                                               UIAlertAction* closeButton = [UIAlertAction
+//                                                                                             actionWithTitle:NSLocalizedString(@"close app", nil)
+//                                                                                             style:UIAlertActionStyleDefault
+//                                                                                             handler:^(UIAlertAction * action) {
+//                                                                                                 exit(0);
+//                                                                                             }];
+//
+//                                                               [alert addAction:ignoreButton];
+//                                                               [alert addAction:closeButton];
+//                                                               [self presentViewController:alert animated:YES completion:nil];
+//                                                           }
+//                                                           if (self.navigationTypeButton == 0){
+//                                                               [self addAddressButton];
+//                                                           } else {
+//                                                               [self addSendButton];
+//                                                           }
+//                                                       }];
+//    }
     if (self.backgroundObserver == nil){
     self.backgroundObserver =
     [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidEnterBackgroundNotification object:nil
                                                        queue:nil usingBlock:^(NSNotification *note) {
                                                            if (! manager.noWallet) { // lockdown the app
                                                                manager.didAuthenticate = NO;
-                                                               self.navigationItem.titleView = self.logo;
-                                                               self.navigationItem.leftBarButtonItem.image = [UIImage imageNamed:@"burger"];
-                                                               self.navigationItem.rightBarButtonItem = self.lock;
-                                                               self.pageViewController.view.alpha = 1.0;
+                                                                                                                              self.navigationItem.leftBarButtonItem.image = [UIImage imageNamed:@"burger"];
+                                                                                                                   self.pageViewController.view.alpha = 1.0;
                                                                [UIApplication sharedApplication].applicationIconBadgeNumber = 0; // reset app badge number
                                                            }
                                                        }];
@@ -384,7 +345,7 @@
                                                       }
                                                       
                                                       [self showBackupDialogIfNeeded];
-                                                      [self.receiveViewController updateAddress];
+//                                                      [self.receiveViewController updateAddress];
                                                       self.balance = manager.wallet.balance;
                                                   }];
     }
@@ -392,7 +353,7 @@
     self.seedObserver =
     [[NSNotificationCenter defaultCenter] addObserverForName:BRWalletManagerSeedChangedNotification object:nil
                                                        queue:nil usingBlock:^(NSNotification *note) {
-                                                           [self.receiveViewController updateAddress];
+//                                                           [self.receiveViewController updateAddress];
                                                            self.balance = manager.wallet.balance;
                                                        }];
     }
@@ -414,8 +375,7 @@
                                                            [self showBackupDialogIfNeeded];
                                                            if (! self.shouldShowTips) [self hideTips];
                                                            self.shouldShowTips = YES;
-                                                           if (! manager.didAuthenticate) self.navigationItem.titleView = self.logo;
-                                                           [self.receiveViewController updateAddress];
+//                                                                                                               [self.receiveViewController updateAddress];
                                                            self.balance = manager.wallet.balance;
                                                        }];
     }
@@ -425,7 +385,7 @@
                                                        queue:nil usingBlock:^(NSNotification *note) {
                                                            if (self.timeout < 1.0) [self stopActivityWithSuccess:YES];
                                                            [self showBackupDialogIfNeeded];
-                                                           [self.receiveViewController updateAddress];
+//                                                           [self.receiveViewController updateAddress];
                                                            [self showErrorBar];
                                                        }];
     }
@@ -535,33 +495,19 @@
     }
 }
 
-- (void)tappedReceiveButton{
-    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:ReceiveController.shared];
-    [self presentViewController:navigation animated:YES completion:nil];
-}
-
-- (void)tappedSendButton{
-    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:SendController.shared];
-    [self presentViewController:navigation animated:YES completion:nil];
-}
-
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
     UIColor *color = [UIColor rgb:85 green:71 blue:108 alpha:1];
-    [Utils changeStatusBackgroundColorWithColor:color];
+//    [Utils changeStatusBackgroundColorWithColor:color];
     [self addMenuButton];
     //UIColor *color = [UIColor colorWithRed:85.0f/255.0f green:71.0f/255.0f blue:188/255.0f alpha:1.0f];
     [[self.navigationController navigationBar] setTranslucent:FALSE];
     [[self.navigationController navigationBar] setShadowImage:[UIImage imageNamed:@""]];
-    [[self.navigationController navigationBar] setBarTintColor: color];
     [[self.navigationController navigationBar] setBackgroundImage:[UIImage imageNamed:@""] forBarMetrics: UIBarMetricsDefault];
     //self.navigationItem.leftBarButtonItem.image = [UIImage imageNamed:@"burger"];
     self.pageViewController.view.alpha = 1.0;
     if ([BRWalletManager sharedInstance].didAuthenticate) [self unlock:nil];
-    
-    [self.view bringSubviewToFront:self.progress];
-    [self.view bringSubviewToFront:self.pulse];
     
 }
 
@@ -612,22 +558,20 @@
     
 }
 
--(void)tappedQrButton {
-    
-    if (_navigationTypeButton == 0){
-        [self addSendButton];
-        _navigationTypeButton = 1;
-        [self.pageViewController setViewControllers:@[self.receiveViewController]
-                                          direction:UIPageViewControllerNavigationDirectionForward animated:YES completion:nil];
-    } else {
-        [self addAddressButton];
-        _navigationTypeButton = 0;
-        [self.pageViewController setViewControllers:@[self.sendViewController]
-                                          direction:UIPageViewControllerNavigationDirectionReverse animated:YES completion:nil];
-    }
-    
-    
-}
+//-(void)tappedQrButton {
+//
+//    if (_navigationTypeButton == 0){
+//        [self addSendButton];
+//        _navigationTypeButton = 1;
+//        [self.pageViewController setViewControllers:@[self.receiveViewController]
+//                                          direction:UIPageViewControllerNavigationDirectionForward animated:YES completion:nil];
+//    } else {
+//        [self addAddressButton];
+//        _navigationTypeButton = 0;
+//        [self.pageViewController setViewControllers:@[self.sendViewController]
+//                                          direction:UIPageViewControllerNavigationDirectionReverse animated:YES completion:nil];
+//    }
+//}
 
 -(void)addMenuButton {
     UIImage *image = [UIImage imageNamed:@"burger"];
@@ -638,14 +582,14 @@
     self.navigationItem.leftBarButtonItem = menuButton;
 }
 
-- (void)toSendViewController {
-    
-    BRSendViewController *controller = (BRSendViewController *)SendController.shared;
-    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:controller];
-    [self presentViewController:navigation animated:YES completion:^(void){
-        [controller actionPayToClipboard];
-    }];
-}
+//- (void)toSendViewController {
+//
+//    BRSendViewController *controller = (BRSendViewController *)SendController.shared;
+//    UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:controller];
+//    [self presentViewController:navigation animated:YES completion:^(void){
+//        [controller actionPayToClipboard];
+//    }];
+//}
 
 -(void)tappedMenuButton{
     [Utils openLeftMenu];
@@ -799,7 +743,7 @@
             
             self.navigationController.navigationBar.hidden = NO;
             self.pageViewController.view.alpha = 1.0;
-            [self.receiveViewController updateAddress];
+//            [self.receiveViewController updateAddress];
             if (self.reachability.currentReachabilityStatus == NotReachable) [self showErrorBar];
             
             if (self.navigationController.visibleViewController == self) {
@@ -827,14 +771,14 @@
                 [[BRPeerManager sharedInstance] connect];
                 [UIApplication sharedApplication].applicationIconBadgeNumber = 0; // reset app badge number
                 
-                if (self.url) {
-                    [self.sendViewController handleURL:self.url];
-                    self.url = nil;
-                }
-                else if (self.file) {
-                    [self.sendViewController handleFile:self.file];
-                    self.file = nil;
-                }
+//                if (self.url) {
+//                    [self.sendViewController handleURL:self.url];
+//                    self.url = nil;
+//                }
+//                else if (self.file) {
+//                    [self.sendViewController handleFile:self.file];
+//                    self.file = nil;
+//                }
             }
         }];
     }
@@ -959,9 +903,9 @@
     // use setDouble since setInteger won't hold a uint64_t
     [[NSUserDefaults standardUserDefaults] setDouble:balance forKey:BALANCE_KEY];
     
-    if (self.shouldShowTips && self.navigationItem.titleView && [self.navigationItem.titleView isKindOfClass:[UILabel class]]) {
-        [self updateTitleView];
-    }
+//    if (self.shouldShowTips && self.navigationItem.titleView && [self.navigationItem.titleView isKindOfClass:[UILabel class]]) {
+//        [self updateTitleView];
+//    }
 }
 
 -(UILabel*)titleLabel {
@@ -992,15 +936,15 @@
     }
 }
 
-- (void)showSyncing
+- (BOOL)isSyncing
 {
     double progress = [BRPeerManager sharedInstance].syncProgress;
     
     if (progress > DBL_EPSILON && progress + DBL_EPSILON < 1.0 && [BRWalletManager sharedInstance].seedCreationTime + DAY_TIME_INTERVAL < [NSDate timeIntervalSinceReferenceDate]) {
-        self.shouldShowTips = NO;
-        self.navigationItem.titleView = nil;
-        self.navigationItem.title = NSLocalizedString(@"Syncing:", nil);
+        return YES;
     }
+    
+    return NO;
 }
 
 - (void)startActivityWithTimeout:(NSTimeInterval)timeout
@@ -1018,17 +962,24 @@
             if ([BRWalletManager sharedInstance].seedCreationTime + DAY_TIME_INTERVAL < start) {
                 self.shouldShowTips = NO;
                 self.navigationItem.titleView = nil;
-                self.navigationItem.title = NSLocalizedString(@"Syncing:", nil);
+//                self.navigationItem.title = NSLocalizedString(@"Syncing:", nil);
             }
         }
-        else [self performSelector:@selector(showSyncing) withObject:nil afterDelay:5.0];
+//        else {
+//            if ([self isSyncing]) {
+//
+//            }
+//        }
+    }
+    
+    if ([BRPeerManager sharedInstance].estimatedBlockHeight == 0 ||
+        abs([BRPeerManager sharedInstance].estimatedBlockHeight - [BRPeerManager sharedInstance].lastBlockHeight) >= 10) {
+        [self.pageViewController setViewControllers:@[SyncController.shared]
+                                          direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
     }
     
     [UIApplication sharedApplication].idleTimerDisabled = YES;
     [UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
-    self.progress.hidden = self.pulse.hidden = NO;
-    [UIView animateWithDuration:0.2 animations:^{ self.progress.alpha = 1.0; }];
-    [self updateProgress];
 }
 
 - (void)stopActivityWithSuccess:(BOOL)success
@@ -1039,76 +990,9 @@
     if (progress > DBL_EPSILON && progress + DBL_EPSILON < 1.0) return; // not done syncing
     [UIApplication sharedApplication].idleTimerDisabled = NO;
     [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
-    if (self.progress.alpha < 0.5) return;
-    
-    if (success) {
-        [self.progress setProgress:1.0 animated:YES];
-        [self.pulse setProgress:1.0 animated:YES];
-        
-        [UIView animateWithDuration:0.2 animations:^{
-            self.progress.alpha = self.pulse.alpha = 0.0;
-        } completion:^(BOOL finished) {
-            self.progress.hidden = self.pulse.hidden = YES;
-            self.progress.progress = self.pulse.progress = 0.0;
-        }];
-    }
-    else {
-        self.progress.hidden = self.pulse.hidden = YES;
-        self.progress.progress = self.pulse.progress = 0.0;
-    }
-    [self updateTitleView];
-}
 
-- (void)setProgressTo:(NSNumber *)n
-{
-    self.progress.progress = n.floatValue;
-}
-
-- (void)updateProgress
-{
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(updateProgress) object:nil];
-    
-    static int counter = 0;
-    NSTimeInterval elapsed = [NSDate timeIntervalSinceReferenceDate] - self.start;
-    double progress = [BRPeerManager sharedInstance].syncProgress;
-    
-    if (progress > DBL_EPSILON && ! self.shouldShowTips && self.tipView.alpha > 0.5) {
-        self.tipView.text = [NSString stringWithFormat:NSLocalizedString(@"block #%d of %d", nil),
-                             [BRPeerManager sharedInstance].lastBlockHeight,
-                             [BRPeerManager sharedInstance].estimatedBlockHeight];
-    }
-    
-    if (self.timeout > 1.0 && 0.1 + 0.9*elapsed/self.timeout < progress) progress = 0.1 + 0.9*elapsed/self.timeout;
-    if ((counter % 13) == 0) {
-        self.pulse.alpha = 1.0;
-        [self.pulse setProgress:progress animated:progress > self.pulse.progress];
-        [self.progress setProgress:progress animated:progress > self.progress.progress];
-        
-        if (progress > self.progress.progress) {
-            [self performSelector:@selector(setProgressTo:) withObject:@(progress) afterDelay:1.0];
-        }
-        else self.progress.progress = progress;
-        
-        [UIView animateWithDuration:1.59 delay:1.0 options:UIViewAnimationOptionCurveEaseIn animations:^{
-            self.pulse.alpha = 0.0;
-        } completion:nil];
-        
-        [self.pulse performSelector:@selector(setProgress:) withObject:nil afterDelay:2.59];
-    }
-    else if ((counter % 13) >= 5) {
-        [self.progress setProgress:progress animated:progress > self.progress.progress];
-        [self.pulse setProgress:progress animated:progress > self.pulse.progress];
-    }
-    
-    counter++;
-    self.navigationItem.title = [NSString stringWithFormat:@"%@ %0.1f%%",NSLocalizedString(@"Syncing:", nil), (progress > 0.1 ? progress - 0.1 : 0.0)*111.0];
-    if (progress + DBL_EPSILON >= 1.0) {
-        if (self.timeout < 1.0) [self stopActivityWithSuccess:YES];
-        if (! self.shouldShowTips) [self hideTips];
-        self.shouldShowTips = YES;
-        if (! [BRWalletManager sharedInstance].didAuthenticate) self.navigationItem.titleView = self.logo;
-    }
-    else [self performSelector:@selector(updateProgress) withObject:nil afterDelay:0.2];
+    [self.pageViewController setViewControllers:@[HomeController.shared]
+                                      direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
 }
 
 - (void)ping
@@ -1141,17 +1025,12 @@
     
     CGRect containerFrame = CGRectMake(0, 98, self.view.frame.size.width, h);
     self.view.frame = containerFrame;
-    self.buttonContainer.frame = CGRectMake(0, y, self.view.frame.size.width, 50);
-    
-    
     
     BRWalletManager *manager = [BRWalletManager sharedInstance];
     
     if (! self.shouldShowTips) [self hideTips];
     self.shouldShowTips = YES;
-    if (! manager.didAuthenticate) self.navigationItem.titleView = self.logo;
     self.balance = _balance; // reset navbar title
-    self.progress.hidden = self.pulse.hidden = YES;
 }
 
 - (void)hideErrorBarWithCompletion:(void (^ _Nullable)(BOOL finished))completion
@@ -1161,7 +1040,7 @@
     if ([[Utils deviceType] isEqualToString:@"iphoneX"]) {
         y = y - 22;
     }
-    self.buttonContainer.frame = CGRectMake(0, y, self.view.frame.size.width, 50);
+    
     [UIView animateWithDuration:UINavigationControllerHideShowBarDuration delay:0.0
                         options:UIViewAnimationOptionCurveEaseOut animations:^{
                             self.burger.center = CGPointMake(self.burger.center.x, 40.0);
@@ -1268,19 +1147,19 @@
     
     BRWalletManager *manager = [BRWalletManager sharedInstance];
     
-    if (sender == self.receiveViewController) {
+//    if (sender == self.receiveViewController) {
 //        BRSendViewController *sendController = self.sendViewController;
 //
 //        [(id)self.pageViewController setViewControllers:@[sendController]
 //                                              direction:UIPageViewControllerNavigationDirectionReverse animated:YES
 //                                             completion:^(BOOL finished) { [sendController tip:sender]; }];
-    }
-    else if (sender == self.sendViewController) {
+//    }
+//    else if (sender == self.sendViewController) {
 //        self.scrollView.scrollEnabled = YES;
 //        [(id)self.pageViewController setViewControllers:@[self.receiveViewController]
 //                                              direction:UIPageViewControllerNavigationDirectionForward animated:YES completion:nil];
-    }
-    else if (self.showTips && manager.seedCreationTime + DAY_TIME_INTERVAL < [NSDate timeIntervalSinceReferenceDate]) {
+//    }
+    if (self.showTips && manager.seedCreationTime + DAY_TIME_INTERVAL < [NSDate timeIntervalSinceReferenceDate]) {
         self.showTips = NO;
     }
     else {
@@ -1319,14 +1198,14 @@
 {
     BRWalletManager *manager = [BRWalletManager sharedInstance];
     if (manager.didAuthenticate) {
-        [self updateTitleView];
+//        [self updateTitleView];
         [self.navigationItem setRightBarButtonItem:nil animated:(sender) ? YES : NO];
     } else {
         [BREventManager saveEvent:@"root:unlock"];
         [manager authenticateWithPrompt:nil andTouchId:YES alertIfLockout:YES completion:^(BOOL authenticated,BOOL cancelled) {
             if (authenticated) {
                 [BREventManager saveEvent:@"root:unlock_success"];
-                [self updateTitleView];
+//                [self updateTitleView];
                 [self.navigationItem setRightBarButtonItem:nil animated:(sender) ? YES : NO];
             }
         }];
@@ -1407,8 +1286,6 @@
         self.showTips = NO;
         [self.navigationController dismissViewControllerAnimated:NO completion:^{
             manager.didAuthenticate = NO;
-            self.navigationItem.titleView = self.logo;
-            self.navigationItem.rightBarButtonItem = self.lock;
             self.pageViewController.view.alpha = 1.0;
             self.navigationController.navigationBar.hidden = YES;
             [[UIApplication sharedApplication] setStatusBarHidden:YES];
@@ -1439,13 +1316,15 @@
 - (UIViewController *)pageViewController:(UIPageViewController *)pageViewController
       viewControllerBeforeViewController:(UIViewController *)viewController
 {
-    return (viewController == self.receiveViewController) ? self.sendViewController : nil;
+//    return (viewController == self.receiveViewController) ? self.sendViewController : nil;
+    return nil;
 }
 
 - (UIViewController *)pageViewController:(UIPageViewController *)pageViewController
        viewControllerAfterViewController:(UIViewController *)viewController
 {
-    return (viewController == self.sendViewController) ? self.receiveViewController : nil;
+//    return (viewController == self.sendViewController) ? self.receiveViewController : nil;
+    return nil;
 }
 
 - (NSInteger)presentationCountForPageViewController:(UIPageViewController *)pageViewController
@@ -1455,8 +1334,8 @@
 
 - (NSInteger)presentationIndexForPageViewController:(UIPageViewController *)pageViewController
 {
-    int index = (pageViewController.viewControllers.lastObject == self.receiveViewController) ? 1 : 0;
-    return index;
+//    int index = (pageViewController.viewControllers.lastObject == self.receiveViewController) ? 1 : 0;
+    return 0;
 }
 
 // MARK: - UIScrollViewDelegate
@@ -1486,7 +1365,6 @@
     *from = [transitionContext viewControllerForKey:UITransitionContextFromViewControllerKey];
     
     if (to == self || from == self) { // nav stack push/pop
-        self.progress.hidden = self.pulse.hidden = YES;
         [containerView addSubview:to.view];
         to.view.center = CGPointMake(containerView.frame.size.width*(to == self ? -1 : 3)/2, to.view.center.y);
         
@@ -1503,7 +1381,6 @@
                                                       afterDelay:0];
                   }
                   
-                  if (self.progress.progress > 0) self.progress.hidden = self.pulse.hidden = NO;
                   [transitionContext completeTransition:YES];
               }];
     }
@@ -1540,16 +1417,16 @@
                   self.pageViewController.view.center = CGPointMake(self.pageViewController.view.center.x,
                                                                     containerView.frame.size.height/2.0);
                   
-                  if (! manager.didAuthenticate) {
-                      item.rightBarButtonItem = rightButton;
-                      if (self.shouldShowTips) item.titleView = titleView;
-                  } else {
-                      if ([[(id)to topViewController] respondsToSelector:@selector(updateTitleView)]) {
-                          [[(id)to topViewController] performSelector:@selector(updateTitleView)];
-                      } else {
-                          item.title = self.navigationItem.title;
-                      }
-                  }
+//                  if (! manager.didAuthenticate) {
+//                      item.rightBarButtonItem = rightButton;
+//                      if (self.shouldShowTips) item.titleView = titleView;
+//                  } else {
+//                      if ([[(id)to topViewController] respondsToSelector:@selector(updateTitleView)]) {
+//                          [[(id)to topViewController] performSelector:@selector(updateTitleView)];
+//                      } else {
+//                          item.title = self.navigationItem.title;
+//                      }
+//                  }
                   item.leftBarButtonItem.image = [UIImage imageNamed:@"x"];
                   [containerView addSubview:to.view];
                   [transitionContext completeTransition:YES];
@@ -1558,7 +1435,7 @@
     else if ([from isKindOfClass:[UINavigationController class]] && to == self.navigationController) { // modal dismiss
         if ([UIApplication sharedApplication].applicationState != UIApplicationStateBackground) {
             [[BRPeerManager sharedInstance] connect];
-            [self.sendViewController updateClipboardText];
+//            [self.sendViewController updateClipboardText];
         }
         
         if (manager.didAuthenticate) [self unlock:nil];
@@ -1589,8 +1466,8 @@
                   self.pageViewController.view.center = CGPointMake(self.pageViewController.view.center.x,
                                                                     containerView.frame.size.height/2);
               } completion:^(BOOL finished) {
-                  item.rightBarButtonItem = rightButton;
-                  item.titleView = titleView;
+//                  item.rightBarButtonItem = rightButton;
+//                  item.titleView = titleView;
                   item.title = self.navigationItem.title;
                   item.leftBarButtonItem.image = [UIImage imageNamed:@"x"];
                   [from.view removeFromSuperview];

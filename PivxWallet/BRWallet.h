@@ -173,6 +173,8 @@ typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amoun
 // adds a transaction to the wallet, or returns false if it isn't associated with the wallet
 - (BOOL)registerTransaction:(BRTransaction * _Nonnull)transaction;
 
+- (void)initChain;
+
 // removes a transaction from the wallet along with any transactions that depend on its outputs
 - (void)removeTransaction:(UInt256)txHash;
 

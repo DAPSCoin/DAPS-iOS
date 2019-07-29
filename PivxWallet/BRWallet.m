@@ -445,6 +445,12 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     }
 }
 
+- (void)initChain {
+    [self.allTx removeAllObjects];
+    [self.transactions removeAllObjects];
+    _balance = 0;
+}
+
 - (void)updateBalance
 {
     uint64_t balance = 0, prevBalance = 0, totalSent = 0, totalReceived = 0;
@@ -1101,7 +1107,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
         [BRTxMetadataEntity deleteObjects:[BRTxMetadataEntity objectsMatching:@"txHash in %@", removableHashes]];
         [BRTxMetadataEntity saveContext];
         
-        [BRMerkleBlockEntity deleteObjects:[BRMerkleBlockEntity objectsMatching:@"height < %d && height != %d", lastHeight - MAX_BLOCK_COUNT]];
+        [BRMerkleBlockEntity deleteObjects:[BRMerkleBlockEntity objectsMatching:@"height < %d && height != %d && height != 0", lastHeight - MAX_BLOCK_COUNT]];
         [BRMerkleBlockEntity saveContext];
     }];
 }

@@ -131,6 +131,8 @@
 		BAA6E3F11BD5CA5900773205 /* BRAWReceiveMoneyInterfaceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA6E3F01BD5CA5900773205 /* BRAWReceiveMoneyInterfaceController.swift */; };
 		BAC7B6BE1BD9C29900165B84 /* BRPhoneWCSessionManager.m in Sources */ = {isa = PBXBuildFile; fileRef = BAC7B6BD1BD9C29900165B84 /* BRPhoneWCSessionManager.m */; };
 		BAE12C061B2DEEF700895CC5 /* BRTodayViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = BAE12C051B2DEEF700895CC5 /* BRTodayViewController.m */; };
+		E32992CA22E9ABBF00402A25 /* BRSyncViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E32992C922E9ABBF00402A25 /* BRSyncViewController.m */; };
+		E32992CD22EA146400402A25 /* BRHomeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E32992CC22EA146400402A25 /* BRHomeViewController.m */; };
 		E33544FC22D3409400CC98FE /* SHA2.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544E122D3409400CC98FE /* SHA2.circ */; };
 		E33544FD22D3409400CC98FE /* SHA2.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544E222D3409400CC98FE /* SHA2.assn */; };
 		E33544FE22D3409400CC98FE /* pedersen-1536.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544E322D3409400CC98FE /* pedersen-1536.circ */; };
@@ -484,6 +486,10 @@
 		BAE12BEA1B2DEE7F00895CC5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BAE12C041B2DEEF700895CC5 /* BRTodayViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BRTodayViewController.h; sourceTree = "<group>"; };
 		BAE12C051B2DEEF700895CC5 /* BRTodayViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BRTodayViewController.m; sourceTree = "<group>"; };
+		E32992C822E9ABBE00402A25 /* BRSyncViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRSyncViewController.h; sourceTree = "<group>"; };
+		E32992C922E9ABBF00402A25 /* BRSyncViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRSyncViewController.m; sourceTree = "<group>"; };
+		E32992CB22EA146400402A25 /* BRHomeViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRHomeViewController.h; sourceTree = "<group>"; };
+		E32992CC22EA146400402A25 /* BRHomeViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRHomeViewController.m; sourceTree = "<group>"; };
 		E33544BF22D33FBB00CC98FE /* secp256k1_surjectionproof.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_surjectionproof.h; sourceTree = "<group>"; };
 		E33544C022D33FBB00CC98FE /* secp256k1_generator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_generator.h; sourceTree = "<group>"; };
 		E33544C122D33FBC00CC98FE /* secp256k1_types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_types.h; sourceTree = "<group>"; };
@@ -954,6 +960,10 @@
 				759FBB33193290F600AB4465 /* BRRootViewController.m */,
 				759FBB34193290F600AB4465 /* BRSendViewController.h */,
 				759FBB35193290F600AB4465 /* BRSendViewController.m */,
+				E32992C822E9ABBE00402A25 /* BRSyncViewController.h */,
+				E32992C922E9ABBF00402A25 /* BRSyncViewController.m */,
+				E32992CB22EA146400402A25 /* BRHomeViewController.h */,
+				E32992CC22EA146400402A25 /* BRHomeViewController.m */,
 				759FBB31193290F600AB4465 /* BRReceiveViewController.h */,
 				75878BC0192AEC3F002505AB /* BRReceiveViewController.m */,
 				84F68C881975E9E2002FC300 /* BRScanViewController.h */,
@@ -1736,6 +1746,7 @@
 				752E28AB19234AE300DB5A3C /* BRMerkleBlockEntity.m in Sources */,
 				2B8A1C9D1FEB594800C7427C /* EmptyTableCell.swift in Sources */,
 				BA7B53501BDA9A2800355E8D /* BRAppleWatchData.m in Sources */,
+				E32992CA22E9ABBF00402A25 /* BRSyncViewController.m in Sources */,
 				2B57356E1FE04C4200110745 /* Utils.swift in Sources */,
 				752E28AC19234AE300DB5A3C /* BRPeerEntity.m in Sources */,
 				FBF2680E1E419318001A1C8B /* DSShapeshiftEntity+CoreDataClass.m in Sources */,
@@ -1778,6 +1789,7 @@
 				752E28D519234C3600DB5A3C /* BRPaymentRequest.m in Sources */,
 				7525B619192453840041C0F2 /* BRNavigationBar.m in Sources */,
 				75F2E0D61BEAA6A400EAE861 /* BRTxMetadataEntity.m in Sources */,
+				E32992CD22EA146400402A25 /* BRHomeViewController.m in Sources */,
 				2BBE619E1FE4833500D06CD7 /* NewAddressController.swift in Sources */,
 				75878BC1192AEC3F002505AB /* BRReceiveViewController.m in Sources */,
 				75878BBF192ACD46002505AB /* BRAmountViewController.m in Sources */,

@@ -33,8 +33,8 @@
 UIScrollViewDelegate, UINavigationControllerDelegate, UIViewControllerTransitioningDelegate,
 UIViewControllerAnimatedTransitioning,UIGestureRecognizerDelegate>
 
-@property (nonatomic, strong) IBOutlet BRReceiveViewController *receiveViewController;
-@property (nonatomic, strong) IBOutlet BRSendViewController *sendViewController;
+//@property (nonatomic, strong) IBOutlet BRReceiveViewController *receiveViewController;
+//@property (nonatomic, strong) IBOutlet BRSendViewController *sendViewController;
 @property (nonatomic, strong) IBOutlet UIPageViewController *pageViewController;
 
 - (IBAction)tip:(id)sender;

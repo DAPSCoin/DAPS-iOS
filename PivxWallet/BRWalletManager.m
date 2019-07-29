@@ -257,11 +257,14 @@ typedef BOOL (^PinVerificationBlock)(NSString * _Nonnull currentPin,BRWalletMana
     self.dashFormat.negativeFormat = [self.dashFormat.positiveFormat
                                       stringByReplacingCharactersInRange:[self.dashFormat.positiveFormat rangeOfString:@"#"]
                                       withString:@"-#"];
-    self.dashFormat.currencyCode = @"PIVX";
+    self.dashFormat.currencyCode = @"DAPS";
     self.dashFormat.currencySymbol = PIVX NARROW_NBSP;
     self.dashFormat.maximumFractionDigits = 8;
     self.dashFormat.minimumFractionDigits = 0; // iOS 8 bug, minimumFractionDigits now has to be set after currencySymbol
     self.dashFormat.maximum = @(MAX_MONEY/(int64_t)pow(10.0, self.dashFormat.maximumFractionDigits));
+    self.dashFormat.currencyGroupingSeparator = @" ";
+    [self.dashFormat setPositiveFormat:@"###,##0.00000000 DAPS"];
+    
     
     _dashSignificantFormat = [NSNumberFormatter new];
     self.dashSignificantFormat.lenient = YES;
@@ -1663,6 +1666,7 @@ typedef BOOL (^PinVerificationBlock)(NSString * _Nonnull currentPin,BRWalletMana
                                                            decimalNumberByMultiplyingByPowerOf10:-self.dashFormat.maximumFractionDigits]];
     return [string attributedStringForDashSymbolWithTintColor:color];
 }
+
 
 - (NSAttributedString *)attributedStringForDashAmount:(int64_t)amount withTintColor:(UIColor*)color useSignificantDigits:(BOOL)useSignificantDigits {
     NSString * string = [(useSignificantDigits?self.dashSignificantFormat:self.dashFormat) stringFromNumber:[(id)[NSDecimalNumber numberWithLongLong:amount]

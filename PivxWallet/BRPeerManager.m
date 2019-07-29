@@ -551,9 +551,16 @@ static const char *dns_seeds[] = {
     dispatch_async(self.q, ^{
         _lastBlock = nil;
         
+        [self.txRelays removeAllObjects];
+        [self.publishedTx removeAllObjects];
+        [self.publishedCallback removeAllObjects];
+        [_blocks removeAllObjects];
+        _estimatedBlockHeight = 0;
+        
         // start the chain download from the most recent checkpoint that's at least a week older than earliestKeyTime
-        for (int i = CHECKPOINT_COUNT - 1; ! _lastBlock && i >= 0; i--) {
-            if (i == 0 || checkpoint_array[i].timestamp + 7*24*60*60 < self.earliestKeyTime + NSTimeIntervalSince1970) {
+//        for (int i = CHECKPOINT_COUNT - 1; ! _lastBlock && i >= 0; i--) {
+//            if (i == 0 || checkpoint_array[i].timestamp + 7*24*60*60 < self.earliestKeyTime + NSTimeIntervalSince1970) {
+                int i = 0;
                 UInt256 hash = *(UInt256 *)@(checkpoint_array[i].hash).hexToData.reverse.bytes;
 
                 NSFetchRequest *req = [BRMerkleBlockEntity fetchReq];
@@ -564,11 +571,13 @@ static const char *dns_seeds[] = {
                 
                 if (!_blocks)
                     _blocks = [NSMutableDictionary dictionary];
+                
                 _blocks[uint256_obj(hash)] = _lastBlock;
                 
 //                _lastBlock = self.blocks[uint256_obj(hash)];
-            }
-        }
+//            }
+//        }
+        
         [[BRMerkleBlockEntity context] performBlockAndWait:^{
             [BRMerkleBlockEntity deleteObjects:[BRMerkleBlockEntity allObjects]];
             [BRMerkleBlockEntity saveContext];
@@ -1541,6 +1550,13 @@ static const char *dns_seeds[] = {
         
         self.lastBlock = block;
         if (block.height == _estimatedBlockHeight) syncDone = YES;
+    }
+    
+    if (abs(_estimatedBlockHeight - block.height < 10)) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter]
+             postNotificationName:BRPeerManagerSyncFinishedNotification object:nil];
+        });
     }
     
     //NSLog(@"%@:%d added block at height %d target %x blockHash: %@", peer.host, peer.port,

@@ -19,6 +19,14 @@ class TxHistoryController: UIViewController {
     @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "BRTxHistory")
 }
 
+class SyncController: UIViewController {
+    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "SyncViewController")
+}
+
+class HomeController: UIViewController {
+    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "HomeViewController")
+}
+
 class SettingsController: UIViewController {
     @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "SettingsViewController")
 }
@@ -38,10 +46,10 @@ class Utils: NSObject {
     @objc static func configureNavigationBar(){
         UINavigationBar.appearance().setBackgroundImage(UIImage(), for:.default)
         UINavigationBar.appearance().shadowImage = UIImage()
-        UINavigationBar.appearance().barTintColor = K.color.purple_r85g71b108
+        UINavigationBar.appearance().barTintColor = K.color.c440940
         UINavigationBar.appearance().tintColor = .white
         UINavigationBar.appearance().isTranslucent = false
-        UINavigationBar.appearance().backgroundColor = K.color.purple_r85g71b108
+        UINavigationBar.appearance().backgroundColor = K.color.c440940
         UINavigationBar.appearance().titleTextAttributes = [NSAttributedStringKey.foregroundColor:UIColor.white]
     }
     
@@ -83,7 +91,7 @@ class Utils: NSObject {
         return navigationController
     }
     
-    @objc static func changeStatusBackgroundColor(color:UIColor = K.color.purple_r85g71b108){
+    @objc static func changeStatusBackgroundColor(color:UIColor = K.color.c440940){
         UIApplication.shared.statusBarView?.backgroundColor = color
     }
     
@@ -111,7 +119,7 @@ class Utils: NSObject {
             menu.tappedMyWalletButton(UIButton())
             let when = DispatchTime.now() + 0.2 // change 2 to desired number of seconds
                 DispatchQueue.main.asyncAfter(deadline: when, qos: .background) {
-                controller.sendViewController.actionQrScan()
+//                controller.sendViewController.actionQrScan()
             }
         }
     }
