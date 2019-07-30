@@ -1,5 +1,5 @@
 //
-//  BRSendViewController.m
+//  BRHomeViewController.m
 //  BreadWallet
 //
 //  Created by Aaron Voisine on 5/8/13.

@@ -32,7 +32,7 @@ class SettingsController: UIViewController {
 }
 
 class SendController: UIViewController {
-    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "SendViewController")
+    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "DapsSendViewController")
 }
 
 class ReceiveController: UIViewController {
@@ -50,7 +50,7 @@ class Utils: NSObject {
         UINavigationBar.appearance().tintColor = .white
         UINavigationBar.appearance().isTranslucent = false
         UINavigationBar.appearance().backgroundColor = K.color.c440940
-        UINavigationBar.appearance().titleTextAttributes = [NSAttributedStringKey.foregroundColor:UIColor.white]
+        UINavigationBar.appearance().titleTextAttributes = [NSAttributedString.Key.foregroundColor:UIColor.white]
     }
     
     static func getTopController()->UIViewController?{

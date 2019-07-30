@@ -1,8 +1,14 @@
 PODS:
+  - RAGTextField (0.13.0)
   - SlideMenuControllerSwift (3.0.2)
 
 DEPENDENCIES:
+  - RAGTextField
   - SlideMenuControllerSwift (from `https://github.com/dekatotoro/SlideMenuControllerSwift.git`, branch `swift4`)
+
+SPEC REPOS:
+  https://github.com/cocoapods/specs.git:
+    - RAGTextField
 
 EXTERNAL SOURCES:
   SlideMenuControllerSwift:
@@ -15,8 +21,9 @@ CHECKOUT OPTIONS:
     :git: https://github.com/dekatotoro/SlideMenuControllerSwift.git
 
 SPEC CHECKSUMS:
+  RAGTextField: 96dfbf49ec5f7b29cd16339192ec99f7610dd0ef
   SlideMenuControllerSwift: 9e8d2bba8ea9201c6207acb76e95a2841453ec9c
 
-PODFILE CHECKSUM: b2a46f2716ee2101b28be474964de9631a33ef2f
+PODFILE CHECKSUM: 43583834391dc6015ac0b3e7b5fa55c342a08889
 
 COCOAPODS: 1.7.2

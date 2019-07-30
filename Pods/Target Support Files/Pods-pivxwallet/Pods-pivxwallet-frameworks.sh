@@ -161,15 +161,19 @@ strip_invalid_archs() {
 
 
 if [[ "$CONFIGURATION" == "Debug" ]]; then
+  install_framework "${BUILT_PRODUCTS_DIR}/RAGTextField/RAGTextField.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/SlideMenuControllerSwift/SlideMenuControllerSwift.framework"
 fi
 if [[ "$CONFIGURATION" == "Testnet" ]]; then
+  install_framework "${BUILT_PRODUCTS_DIR}/RAGTextField/RAGTextField.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/SlideMenuControllerSwift/SlideMenuControllerSwift.framework"
 fi
 if [[ "$CONFIGURATION" == "Release" ]]; then
+  install_framework "${BUILT_PRODUCTS_DIR}/RAGTextField/RAGTextField.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/SlideMenuControllerSwift/SlideMenuControllerSwift.framework"
 fi
 if [[ "$CONFIGURATION" == "Testflight" ]]; then
+  install_framework "${BUILT_PRODUCTS_DIR}/RAGTextField/RAGTextField.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/SlideMenuControllerSwift/SlideMenuControllerSwift.framework"
 fi
 if [ "${COCOAPODS_PARALLEL_CODE_SIGN}" == "true" ]; then
