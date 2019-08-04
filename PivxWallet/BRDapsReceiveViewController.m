@@ -41,6 +41,7 @@
 @property (weak, nonatomic) IBOutlet UIImageView *imgQRcode;
 @property (weak, nonatomic) IBOutlet UILabel *txtQRcode;
 @property (weak, nonatomic) IBOutlet RAGTextField *txtAmount;
+@property (weak, nonatomic) IBOutlet UIScrollView *scrollView;
 
 @end
 
@@ -118,6 +119,8 @@
 }
 
 - (void)viewLayoutMarginsDidChange {
+    [super viewLayoutMarginsDidChange];
+    
     [self.txtPaymentID layoutIfNeeded];
     [self.txtAmount layoutIfNeeded];
     

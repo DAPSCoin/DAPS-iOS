@@ -122,6 +122,8 @@
 }
 
 - (void)viewLayoutMarginsDidChange {
+    [super viewLayoutMarginsDidChange];
+    
     [self.txtDescription layoutIfNeeded];
     [self.txtAmount layoutIfNeeded];
     for (UIView *view in self.txtDescription.subviews) {
