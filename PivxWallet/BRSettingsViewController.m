@@ -371,15 +371,20 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    if (tableView == self.selectorController.tableView) return self.selectorOptions.count;
-    
-    switch (section) {
-        case 0: return 2;
-        case 1: return (self.touchId) ? 2 : 1;
-        case 2: return 3;
-    }
+    if (section == 0)
+        return 1;
     
     return 0;
+    
+//    if (tableView == self.selectorController.tableView) return self.selectorOptions.count;
+//
+//    switch (section) {
+//        case 0: return 2;
+//        case 1: return (self.touchId) ? 2 : 1;
+//        case 2: return 3;
+//    }
+//
+//    return 0;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
