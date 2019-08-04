@@ -9,10 +9,10 @@
 
 #include "group.h"
 
-#include "modules/commitment/main_impl.h"
+#include "src/modules/commitment/main_impl.h"
 
-#include "modules/rangeproof/borromean_impl.h"
-#include "modules/rangeproof/rangeproof_impl.h"
+#include "src/modules/rangeproof/borromean_impl.h"
+#include "src/modules/rangeproof/rangeproof_impl.h"
 
 int secp256k1_rangeproof_info(const secp256k1_context2* ctx, int *exp, int *mantissa,
  uint64_t *min_value, uint64_t *max_value, const unsigned char *proof, size_t plen) {

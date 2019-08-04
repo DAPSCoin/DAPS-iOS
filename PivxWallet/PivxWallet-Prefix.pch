@@ -26,7 +26,6 @@
 #define MESSAGE_LOGGING 1
 #define DROP_MESSAGE_LOGGING (0 & DEBUG)
 #define EXCHANGE_RATES_LOGGING 0
-#define HAVE_CONFIG_H 1
 
 #if ! DEBUG
 #define NSLog(...)

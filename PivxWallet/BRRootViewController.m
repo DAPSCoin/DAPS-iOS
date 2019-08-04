@@ -638,43 +638,50 @@
         manager.dashFormat.maximum = @(MAX_MONEY/DUFFS);
     }
     
-    if (manager.noWallet && manager.noOldWallet) {
-        if (! manager.passcodeEnabled) {
-            UIAlertController * alert = [UIAlertController
-                                         alertControllerWithTitle:NSLocalizedString(@"turn device passcode on", nil)
-                                         message:NSLocalizedString(@"\nA device passcode is needed to safeguard your wallet. Go to settings and "
-                                                                   "turn passcode on to continue.", nil)
-                                         preferredStyle:UIAlertControllerStyleAlert];
-            UIAlertAction* closeButton = [UIAlertAction
-                                          actionWithTitle:NSLocalizedString(@"close app", nil)
-                                          style:UIAlertActionStyleDefault
-                                          handler:^(UIAlertAction * action) {
-                                              exit(0);
-                                          }];
-            [alert addAction:closeButton];
-            [self presentViewController:alert animated:YES completion:nil];
-        }
-        else {
-            SetupController *controller = [[SetupController alloc] initWithNibName:@"Setup" bundle:nil];
-            UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:controller];
-            [self.navigationController presentViewController:navigation animated:TRUE completion:nil];
-            
-//            [self.navigationController
-//             presentViewController:[self.storyboard instantiateViewControllerWithIdentifier:@"NewWalletNav"] animated:NO
-//             completion:^{
-//
-//                 self.splash.hidden = YES;
-//                 self.navigationController.navigationBar.hidden = NO;
-//                 [self.pageViewController setViewControllers:@[self.receiveViewController]
-//                                                   direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
-//             }];
-            
-            manager.didAuthenticate = YES;
-            self.showTips = YES;
-            [self unlock:nil];
-        }
+//    [manager setSeedPhrase:nil];      //wipe wallet test code
+    
+    if (manager.noWallet) {
+        NSString *seedPhrase = [manager generateRandomSeed];
+        [manager setSeedPhrase:seedPhrase];
     }
-    else {
+    
+//    if (manager.noWallet && manager.noOldWallet) {
+//        if (! manager.passcodeEnabled) {
+//            UIAlertController * alert = [UIAlertController
+//                                         alertControllerWithTitle:NSLocalizedString(@"turn device passcode on", nil)
+//                                         message:NSLocalizedString(@"\nA device passcode is needed to safeguard your wallet. Go to settings and "
+//                                                                   "turn passcode on to continue.", nil)
+//                                         preferredStyle:UIAlertControllerStyleAlert];
+//            UIAlertAction* closeButton = [UIAlertAction
+//                                          actionWithTitle:NSLocalizedString(@"close app", nil)
+//                                          style:UIAlertActionStyleDefault
+//                                          handler:^(UIAlertAction * action) {
+//                                              exit(0);
+//                                          }];
+//            [alert addAction:closeButton];
+//            [self presentViewController:alert animated:YES completion:nil];
+//        }
+//        else {
+//            SetupController *controller = [[SetupController alloc] initWithNibName:@"Setup" bundle:nil];
+//            UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:controller];
+//            [self.navigationController presentViewController:navigation animated:TRUE completion:nil];
+//
+////            [self.navigationController
+////             presentViewController:[self.storyboard instantiateViewControllerWithIdentifier:@"NewWalletNav"] animated:NO
+////             completion:^{
+////
+////                 self.splash.hidden = YES;
+////                 self.navigationController.navigationBar.hidden = NO;
+////                 [self.pageViewController setViewControllers:@[self.receiveViewController]
+////                                                   direction:UIPageViewControllerNavigationDirectionForward animated:NO completion:nil];
+////             }];
+//
+//            manager.didAuthenticate = YES;
+//            self.showTips = YES;
+//            [self unlock:nil];
+//        }
+//    }
+//    else {
         [manager upgradeExtendedKeysWithCompletion:^(BOOL success, BOOL neededUpgrade, BOOL authenticated, BOOL cancelled) {
             if (!success && neededUpgrade && !authenticated) {
                 UIAlertController * alert;
@@ -781,7 +788,7 @@
 //                }
             }
         }];
-    }
+//    }
 }
 
 

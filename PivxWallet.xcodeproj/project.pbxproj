@@ -203,6 +203,7 @@
 		E3F3140A22EF9A02001B4C1F /* ConstraintLayoutSupportDSL.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F313E622EF9A02001B4C1F /* ConstraintLayoutSupportDSL.swift */; };
 		E3F3140B22EF9A02001B4C1F /* ConstraintMakerRelatable.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F313E722EF9A02001B4C1F /* ConstraintMakerRelatable.swift */; };
 		E3F3140C22EF9A02001B4C1F /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = E3F313E822EF9A02001B4C1F /* README.md */; };
+		E3F3141322F0F77E001B4C1F /* BRDapsReceiveViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E3F3141222F0F77D001B4C1F /* BRDapsReceiveViewController.m */; };
 		E893E93EC6CB2E63C28D68E6 /* Pods_pivxwallet.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52C978F753836B477A7FE473 /* Pods_pivxwallet.framework */; };
 		FB021E4F1E42EB5F00D17638 /* NSAttributedString+Attachments.m in Sources */ = {isa = PBXBuildFile; fileRef = FB021E4E1E42EB5F00D17638 /* NSAttributedString+Attachments.m */; };
 		FB021E561E47E17200D17638 /* FBShimmeringLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = FB021E531E47E17200D17638 /* FBShimmeringLayer.m */; };
@@ -631,6 +632,8 @@
 		E3F313E622EF9A02001B4C1F /* ConstraintLayoutSupportDSL.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ConstraintLayoutSupportDSL.swift; sourceTree = "<group>"; };
 		E3F313E722EF9A02001B4C1F /* ConstraintMakerRelatable.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ConstraintMakerRelatable.swift; sourceTree = "<group>"; };
 		E3F313E822EF9A02001B4C1F /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		E3F3141122F0F77D001B4C1F /* BRDapsReceiveViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRDapsReceiveViewController.h; sourceTree = "<group>"; };
+		E3F3141222F0F77D001B4C1F /* BRDapsReceiveViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRDapsReceiveViewController.m; sourceTree = "<group>"; };
 		F3767C71363A17C2937E2034 /* Pods-pivxwallet.testnet.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-pivxwallet.testnet.xcconfig"; path = "Pods/Target Support Files/Pods-pivxwallet/Pods-pivxwallet.testnet.xcconfig"; sourceTree = "<group>"; };
 		FB021E4D1E42EB5F00D17638 /* NSAttributedString+Attachments.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSAttributedString+Attachments.h"; sourceTree = "<group>"; };
 		FB021E4E1E42EB5F00D17638 /* NSAttributedString+Attachments.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSAttributedString+Attachments.m"; sourceTree = "<group>"; };
@@ -1051,6 +1054,8 @@
 				E32992C922E9ABBF00402A25 /* BRSyncViewController.m */,
 				E3F3136722EF3F72001B4C1F /* BRDapsSendViewController.h */,
 				E3F3136822EF3F72001B4C1F /* BRDapsSendViewController.m */,
+				E3F3141122F0F77D001B4C1F /* BRDapsReceiveViewController.h */,
+				E3F3141222F0F77D001B4C1F /* BRDapsReceiveViewController.m */,
 				E32992CB22EA146400402A25 /* BRHomeViewController.h */,
 				E32992CC22EA146400402A25 /* BRHomeViewController.m */,
 				759FBB31193290F600AB4465 /* BRReceiveViewController.h */,
@@ -2014,6 +2019,7 @@
 				E3F313FE22EF9A02001B4C1F /* ConstraintOffsetTarget.swift in Sources */,
 				E3F313F622EF9A02001B4C1F /* ConstraintInsetTarget.swift in Sources */,
 				BA7B53541BDAA0A800355E8D /* BRAppleWatchTransactionData.m in Sources */,
+				E3F3141322F0F77E001B4C1F /* BRDapsReceiveViewController.m in Sources */,
 				E3F3140222EF9A02001B4C1F /* ConstraintLayoutGuideDSL.swift in Sources */,
 				E3F313F022EF9A02001B4C1F /* ConstraintPriorityTarget.swift in Sources */,
 				FB021E571E47E17200D17638 /* FBShimmeringView.m in Sources */,

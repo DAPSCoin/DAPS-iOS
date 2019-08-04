@@ -36,7 +36,7 @@ class SendController: UIViewController {
 }
 
 class ReceiveController: UIViewController {
-    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "ReceiveViewController")
+    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "DapsReceiveViewController")
 }
 
 class Utils: NSObject {

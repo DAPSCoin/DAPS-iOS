@@ -3,7 +3,9 @@
  * Distributed under the MIT software license, see the accompanying   *
  * file COPYING or http://www.opensource.org/licenses/mit-license.php.*
  **********************************************************************/
+#define USE_BASIC_CONFIG 1
 
+#include "basic-config.h"
 #include "include/secp256k1_2.h"
 
 #include "util.h"

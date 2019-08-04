@@ -22,6 +22,7 @@ public class SwiftyMenu: UIView {
     @IBOutlet weak var heightConstraint: NSLayoutConstraint!
     
     private var selectButton: UIButton!
+    private var inputText: UITextField!
     private var optionsTableView: UITableView!
     private var state: MenuState = .hidden
     private enum MenuState {
@@ -51,7 +52,11 @@ public class SwiftyMenu: UIView {
     private var width: CGFloat!
     private var height: CGFloat!
     
-    public var selectedIndex: Int?
+    @IBInspectable public var selectedIndex: Int = -1 {
+        didSet {
+            setSelectedOptionsAsTitle()
+        }
+    }
 
     public var selectedIndecis: [Int: Int] = [:]
     @IBInspectable public var options = [String]() {
@@ -108,13 +113,24 @@ public class SwiftyMenu: UIView {
     @IBInspectable public var placeHolderColor: UIColor = UIColor(red: 149.0/255.0, green: 149.0/255.0, blue: 149.0/255.0, alpha: 1.0) {
         didSet {
             selectButton.setTitleColor(placeHolderColor, for: .normal)
+            if ((inputText) != nil) {
+                inputText.textColor = placeHolderColor
+            }
         }
     }
     @IBInspectable public var placeHolderText: String? {
         didSet {
             UIView.performWithoutAnimation {
-                selectButton.setTitle(placeHolderText, for: .normal)
-                selectButton.layoutIfNeeded()
+                if ((placeHolderText) != nil) {
+                    let myAttribute = [NSAttributedString.Key.font : UIFont.italicSystemFont(ofSize: 12), NSAttributedString.Key.foregroundColor : UIColor.white]
+                    if (!hasInputText) {
+                        selectButton.setAttributedTitle(NSAttributedString(string: placeHolderText!, attributes: myAttribute), for: .normal)
+                        selectButton.layoutIfNeeded()
+                    } else {
+                        inputText.attributedPlaceholder = NSAttributedString(string: placeHolderText!, attributes: myAttribute)
+                        inputText.layoutIfNeeded()
+                    }
+                }
             }
         }
     }
@@ -146,12 +162,18 @@ public class SwiftyMenu: UIView {
             layer.cornerRadius = cornerRadius
         }
     }
+    @IBInspectable public var inputValue: String = ""
     
     @IBInspectable public var expandingDuration: Double = 0.5
     @IBInspectable public var collapsingDuration: Double = 0.5
     
     @IBInspectable public var expandingDelay: Double = 0.0
     @IBInspectable public var collapsingDelay: Double = 0.0
+    @IBInspectable public var hasInputText: Bool = false {
+        didSet {
+            reSetupUI()
+        }
+    }
     
     public var expandingAnimationStyle: AnimationStyle = .linear
     public var collapsingAnimationStyle: AnimationStyle = .linear
@@ -182,6 +204,29 @@ public class SwiftyMenu: UIView {
         getViewWidth()
         getViewHeight()
         setupSelectButton()
+        setupInputText()
+        setupDataTableView()
+    }
+    
+    private func reSetupUI () {
+        if ((selectButton) != nil) {
+            selectButton.removeFromSuperview()
+            selectButton = nil
+        }
+        if ((inputText) != nil) {
+            inputText.removeFromSuperview()
+            inputText = nil
+        }
+        if ((optionsTableView) != nil) {
+            optionsTableView.removeFromSuperview()
+            optionsTableView = nil
+        }
+        
+        setupView()
+        getViewWidth()
+        getViewHeight()
+        setupSelectButton()
+        setupInputText()
         setupDataTableView()
     }
     
@@ -206,19 +251,28 @@ public class SwiftyMenu: UIView {
     }
     
     private func setupSelectButton() {
-        selectButton = UIButton(frame: self.frame)
+        if (hasInputText) {
+            selectButton = UIButton(frame: CGRect(x: self.frame.size.width - 80, y: 0, width: 80, height: self.frame.size.height))
+        } else {
+            selectButton = UIButton(frame: self.frame)
+        }
         self.addSubview(selectButton)
         
-        selectButton.snp.makeConstraints { maker in
-            maker.leading.trailing.top.equalTo(self)
-            maker.height.equalTo(height)
+        if (!hasInputText) {
+            selectButton.snp.makeConstraints { maker in
+                maker.leading.trailing.top.equalTo(self)
+                maker.height.equalTo(height)
+            }
         }
         
         let color = placeHolderColor
         selectButton.setTitleColor(color, for: .normal)
         UIView.performWithoutAnimation {
-            selectButton.setTitle(placeHolderText, for: .normal)
-            selectButton.layoutIfNeeded()
+            if ((placeHolderText) != nil) {
+                let myAttribute = [NSAttributedString.Key.font : UIFont.italicSystemFont(ofSize: 12), NSAttributedString.Key.foregroundColor : UIColor.white]
+                selectButton.setAttributedTitle(NSAttributedString(string: placeHolderText!, attributes: myAttribute), for: .normal)
+                selectButton.layoutIfNeeded()
+            }
         }
         selectButton.titleLabel?.font = UIFont.systemFont(ofSize: 12)
         selectButton.imageEdgeInsets.left = width - 16
@@ -240,6 +294,33 @@ public class SwiftyMenu: UIView {
         }
         
         selectButton.addTarget(self, action: #selector(handleMenuState), for: .touchUpInside)
+    }
+    
+    private func setupInputText() {
+        if (!hasInputText) {
+            return
+        }
+                
+        inputText = UITextField(frame: CGRect(x: 10, y: 0, width: self.frame.size.width - 80, height: self.frame.size.height))
+        self.addSubview(inputText)
+        
+//        inputText.snp.makeConstraints { maker in
+//            maker.leading.trailing.top.equalTo(self)
+//            maker.height.equalTo(height)
+//        }
+        
+        let color = placeHolderColor
+        inputText.textColor = color
+        inputText.font = UIFont.systemFont(ofSize: 12)
+        inputText.backgroundColor = menuHeaderBackgroundColor
+        inputText.keyboardType = UIKeyboardType.decimalPad
+        inputText.addTarget(self, action: #selector(textFieldDidChange(_:)), for: UIControl.Event.editingChanged);
+        UIView.performWithoutAnimation {
+            if ((placeHolderText) != nil) {
+                let myAttribute = [NSAttributedString.Key.font : UIFont.italicSystemFont(ofSize: 12), NSAttributedString.Key.foregroundColor : UIColor.white]
+                inputText.attributedPlaceholder = NSAttributedString(string: placeHolderText!, attributes: myAttribute)
+            }
+        }
     }
     
     private func setupDataTableView() {
@@ -270,6 +351,10 @@ public class SwiftyMenu: UIView {
         }
     }
     
+    @objc private func textFieldDidChange(_ textField: UITextField) {
+        inputValue = textField.text ?? ""
+    }
+    
 }
 
 // MARK: - UITableViewDataSource
@@ -278,18 +363,6 @@ extension SwiftyMenu: UITableViewDataSource {
     
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return options.count
-    }
-    
-    public func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
-        cell.tintColor = .clear
-        cell.backgroundColor = .clear
-        cell.contentView.backgroundColor = .clear
-        cell.imageView?.backgroundColor = .clear
-        
-        for subview in cell.subviews
-        {
-            subview.backgroundColor = .clear
-        }
     }
     
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -301,7 +374,7 @@ extension SwiftyMenu: UITableViewDataSource {
             cell.textLabel?.font = UIFont.systemFont(ofSize: 12)
             cell.tintColor = .clear
             cell.backgroundColor = .clear
-            cell.accessoryType = selectedIndecis[indexPath.row] != nil ? .checkmark : .none
+//            cell.accessoryType = selectedIndecis[indexPath.row] != nil ? .checkmark : .none
             cell.selectionStyle = .none
             return cell
         } else {
@@ -311,7 +384,7 @@ extension SwiftyMenu: UITableViewDataSource {
             cell.textLabel?.font = UIFont.systemFont(ofSize: 12)
             cell.tintColor = .clear
             cell.backgroundColor = .clear
-            cell.accessoryType = indexPath.row == selectedIndex ? .checkmark : .none
+//            cell.accessoryType = indexPath.row == selectedIndex ? .checkmark : .none
             cell.selectionStyle = .none
             return cell
         }
@@ -329,8 +402,11 @@ extension SwiftyMenu: UITableViewDelegate {
         if isMultiSelect {
             if selectedIndecis.isEmpty {
                 UIView.performWithoutAnimation {
-                    selectButton.setTitle(placeHolderText, for: .normal)
-                    selectButton.layoutIfNeeded()
+                    if ((placeHolderText) != nil) {
+                        let myAttribute = [NSAttributedString.Key.font : UIFont.italicSystemFont(ofSize: 12), NSAttributedString.Key.foregroundColor : UIColor.white]
+                        selectButton.setAttributedTitle(NSAttributedString(string: placeHolderText!, attributes: myAttribute), for: .normal)
+                        selectButton.layoutIfNeeded()
+                    }
                 }
                 selectButton.setTitleColor(placeHolderColor, for: .normal)
             } else {
@@ -342,21 +418,26 @@ extension SwiftyMenu: UITableViewDelegate {
                     selectedTitle.append(contentsOf: "\(option.value), ")
                 }
                 UIView.performWithoutAnimation {
+                    selectButton.setAttributedTitle(nil, for: .normal)
                     selectButton.setTitle(selectedTitle, for: .normal)
                     selectButton.layoutIfNeeded()
                 }
                 selectButton.setTitleColor(optionColor, for: .normal)
             }
         } else {
-            if selectedIndex == nil {
+            if selectedIndex == -1 {
                 UIView.performWithoutAnimation {
-                    selectButton.setTitle(placeHolderText, for: .normal)
-                    selectButton.layoutIfNeeded()
+                    if ((placeHolderText) != nil) {
+                        let myAttribute = [NSAttributedString.Key.font : UIFont.italicSystemFont(ofSize: 12), NSAttributedString.Key.foregroundColor : UIColor.white]
+                        selectButton.setAttributedTitle(NSAttributedString(string: placeHolderText!, attributes: myAttribute), for: .normal)
+                        selectButton.layoutIfNeeded()
+                    }
                 }
                 selectButton.setTitleColor(placeHolderColor, for: .normal)
             } else {
                 UIView.performWithoutAnimation {
-                    selectButton.setTitle(options[selectedIndex!], for: .normal)
+                    selectButton.setAttributedTitle(nil, for: .normal)
+                    selectButton.setTitle(options[selectedIndex], for: .normal)
                     selectButton.layoutIfNeeded()
                 }
                 selectButton.setTitleColor(optionColor, for: .normal)
@@ -393,7 +474,7 @@ extension SwiftyMenu: UITableViewDelegate {
             } else {
                 selectedIndex = indexPath.row
                 setSelectedOptionsAsTitle()
-                let selectedText = self.options[self.selectedIndex!]
+                let selectedText = self.options[self.selectedIndex]
                 delegate?.didSelectOption(self, selectedText, indexPath.row)
                 self.didSelectOption((self, selectedText, indexPath.row))
                 tableView.reloadData()

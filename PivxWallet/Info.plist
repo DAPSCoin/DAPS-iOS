@@ -104,7 +104,7 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Used to scan barcodes</string>
+	<string>${PRODUCT_NAME} We will use your camera to scan qrcode.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We will use your location to determine where you are. Your location will never be recorded or shared with anyone.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

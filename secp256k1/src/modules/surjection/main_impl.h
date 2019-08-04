@@ -9,8 +9,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include "modules/rangeproof/borromean.h"
-#include "modules/surjection/surjection_impl.h"
+#include "src/modules/rangeproof/borromean.h"
+#include "src/modules/surjection/surjection_impl.h"
 #include "hash.h"
 #include "include/secp256k1_rangeproof.h"
 #include "include/secp256k1_surjectionproof.h"
