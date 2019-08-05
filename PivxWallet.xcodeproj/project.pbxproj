@@ -161,6 +161,7 @@
 		E335451422D3409400CC98FE /* pedersen-384.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544F922D3409400CC98FE /* pedersen-384.circ */; };
 		E335451522D3409400CC98FE /* pedersen-384.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544FA22D3409400CC98FE /* pedersen-384.assn */; };
 		E39D7E6622F88090005AF7A3 /* BRDapsHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E39D7E6422F8808E005AF7A3 /* BRDapsHistoryViewController.m */; };
+		E39D7E6822F8D78C005AF7A3 /* SearchDialog.xib in Resources */ = {isa = PBXBuildFile; fileRef = E39D7E6722F8D576005AF7A3 /* SearchDialog.xib */; };
 		E3E948CE22D7A24000A6A941 /* secp256k1_2.c in Sources */ = {isa = PBXBuildFile; fileRef = E3E948CD22D7A24000A6A941 /* secp256k1_2.c */; };
 		E3F3136922EF3F73001B4C1F /* BRDapsSendViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E3F3136822EF3F72001B4C1F /* BRDapsSendViewController.m */; };
 		E3F3137422EF9863001B4C1F /* SwiftyMenuDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F3136E22EF9863001B4C1F /* SwiftyMenuDelegate.swift */; };
@@ -591,6 +592,7 @@
 		E34725F322C41CEC0050348A /* PIVX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = PIVX.entitlements; path = pivxwallet/PIVX.entitlements; sourceTree = "<group>"; };
 		E39D7E6422F8808E005AF7A3 /* BRDapsHistoryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRDapsHistoryViewController.m; sourceTree = "<group>"; };
 		E39D7E6522F8808F005AF7A3 /* BRDapsHistoryViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRDapsHistoryViewController.h; sourceTree = "<group>"; };
+		E39D7E6722F8D576005AF7A3 /* SearchDialog.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = SearchDialog.xib; sourceTree = "<group>"; };
 		E3E948CD22D7A24000A6A941 /* secp256k1_2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = secp256k1_2.c; sourceTree = "<group>"; };
 		E3F3136722EF3F72001B4C1F /* BRDapsSendViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRDapsSendViewController.h; sourceTree = "<group>"; };
 		E3F3136822EF3F72001B4C1F /* BRDapsSendViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRDapsSendViewController.m; sourceTree = "<group>"; };
@@ -801,6 +803,7 @@
 				2B57357C1FE0882B00110745 /* Step2View.xib */,
 				2B57357E1FE0882B00110745 /* Step3View.xib */,
 				2B57357F1FE0882B00110745 /* Step4View.xib */,
+				E39D7E6722F8D576005AF7A3 /* SearchDialog.xib */,
 			);
 			name = Views;
 			sourceTree = "<group>";
@@ -1751,6 +1754,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E39D7E6822F8D78C005AF7A3 /* SearchDialog.xib in Resources */,
 				75D5F3E0191EC270004AB296 /* Images.xcassets in Resources */,
 				2BFA523A1FE0AC4D00A3C808 /* Menu.xib in Resources */,
 				757E09991ADB8EEB006FD352 /* Localizable.strings in Resources */,

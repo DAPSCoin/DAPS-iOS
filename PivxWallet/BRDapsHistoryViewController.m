@@ -29,9 +29,7 @@
 #import "BRTransaction.h"
 #import "pivxwallet-Swift.h"
 
-
 @interface BRDapsHistoryViewController ()
-
 
 @end
 
@@ -51,8 +49,11 @@
     
     UIImageView *tempImageView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"background"]];
     [tempImageView setFrame:self.tableView.frame];
-    
     self.tableView.backgroundView = tempImageView;
+    
+//    UIView *v = [[[NSBundle mainBundle] loadNibNamed:@"SearchDialog" owner:self options:nil] lastObject];
+//    [v setFrame:CGRectMake(0, 0, self.tableView.frame.size.width, self.tableView.frame.size.height)];
+//    [self.navigationController.view addSubview:v];
 }
 
 - (void)viewLayoutMarginsDidChange {
@@ -93,6 +94,29 @@
     [Utils openLeftMenu];
 }
 
+- (NSString *)dateForTx:(BRTransaction *)tx
+{
+    NSDateFormatter *yearMonthDay = [NSDateFormatter new];
+    yearMonthDay.dateFormat = @"dd/MM/yyyy";
+    
+    NSTimeInterval now = [[BRPeerManager sharedInstance] timestampForBlockHeight:TX_UNCONFIRMED];
+    
+    NSTimeInterval txTime = (tx.timestamp > 1) ? tx.timestamp : now;
+    
+    return [yearMonthDay stringFromDate:[NSDate dateWithTimeIntervalSinceReferenceDate:txTime]];
+}
+
+- (NSString *)timeForTx:(BRTransaction *)tx
+{
+    NSDateFormatter *timeFormat = [NSDateFormatter new];
+    timeFormat.dateFormat = @"hh:mm:ss";
+    
+    NSTimeInterval now = [[BRPeerManager sharedInstance] timestampForBlockHeight:TX_UNCONFIRMED];
+    NSTimeInterval txTime = (tx.timestamp > 1) ? tx.timestamp : now;
+    
+    return [timeFormat stringFromDate:[NSDate dateWithTimeIntervalSinceReferenceDate:txTime]];
+}
+
 - (BOOL)textFieldShouldReturn:(UITextField *)textField
 {
     [textField resignFirstResponder];
@@ -128,14 +152,19 @@
     
     NSString *balanceString = @"";
     int64_t diff = received - sent;
-    if (diff > 0)
+    if (diff > 0) {
         balanceString = [balanceString stringByAppendingString:@"+ "];
+        balanceLabel.textColor = [UIColor rgb:150 green:255 blue:131 alpha:255];
+    }
     else {
         balanceString = [balanceString stringByAppendingString:@"- "];
+        balanceLabel.textColor = [UIColor rgb:147 green:103 blue:144 alpha:255];
         diff *= -1;
     }
     
     balanceLabel.text = [balanceString stringByAppendingString:[manager attributedStringForDashAmount:diff withTintColor:[UIColor whiteColor]].string];
+    dateLabel.text = [self dateForTx:tx];
+    timeLabel.text = [self timeForTx:tx];
     
     return cell;
 }
