@@ -59,7 +59,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 @property (nonatomic, strong) NSData *masterPublicKey,*masterBIP32PublicKey;
 @property (nonatomic, strong) NSMutableArray *internalBIP44Addresses,*internalBIP32Addresses, *externalBIP44Addresses,*externalBIP32Addresses, *allKeys;
 @property (nonatomic, strong) NSMutableSet *allAddresses, *usedAddresses;
-@property (nonatomic, strong) NSSet *spentOutputs, *invalidTx, *pendingTx;
+@property (nonatomic, strong) NSMutableSet *spentOutputs, *invalidTx, *pendingTx;
 @property (nonatomic, strong) NSMutableOrderedSet *transactions;
 @property (nonatomic, strong) NSOrderedSet *utxos;
 @property (nonatomic, strong) NSMutableDictionary *allTx;
@@ -109,6 +109,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     self.feePerKb = DEFAULT_FEE_PER_KB;
     self.spentOutputKeyImage = [NSMutableDictionary dictionary];
     self.inSpendOutput = [NSMutableDictionary dictionary];
+    self.spentBalance = [NSMutableDictionary dictionary];
     
     [self.moc performBlockAndWait:^{
         [BRAddressEntity setContext:self.moc];
@@ -408,7 +409,18 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                     if ([ki isEqualToData:tx.inputKeyImage[i]]) {
                         if (tx.blockHeight != TX_UNCONFIRMED) {
                             [self.spentOutputKeyImage setObject:ki forKey:brutxo_obj(o)];
+                            [self.spentOutputs addObject:brutxo_obj(o)];
                             [self.inSpendOutput removeObjectForKey:brutxo_obj(o)];
+                            
+                            UInt64 c = 0;
+                            BRKey *blind;
+                            [self RevealTxOutAmount:prev :o.n :&c :&blind];
+                            if (self.spentBalance[uint256_obj(tx.txHash)]) {
+                                UInt64 amount = [self.spentBalance[uint256_obj(tx.txHash)] unsignedLongLongValue];
+                                c += amount;
+                            }
+                            
+                            [self.spentBalance setObject:@(c) forKey:uint256_obj(tx.txHash)];
                         } else {
                             [self.inSpendOutput setObject:[NSNumber numberWithBool:YES] forKey:brutxo_obj(o)];
                         }
@@ -433,7 +445,18 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
                         if ([ki isEqualToData:tx.inputKeyImage[i]]) {
                             if (tx.blockHeight != TX_UNCONFIRMED) {
                                 [self.spentOutputKeyImage setObject:ki forKey:brutxo_obj(o)];
+                                [self.spentOutputs addObject:brutxo_obj(o)];
                                 [self.inSpendOutput removeObjectForKey:brutxo_obj(o)];
+                                
+                                UInt64 c = 0;
+                                BRKey *blind;
+                                [self RevealTxOutAmount:prev :o.n :&c :&blind];
+                                if (self.spentBalance[uint256_obj(tx.txHash)]) {
+                                    UInt64 amount = [self.spentBalance[uint256_obj(tx.txHash)] unsignedLongLongValue];
+                                    c += amount;
+                                }
+                                
+                                [self.spentBalance setObject:@(c) forKey:uint256_obj(tx.txHash)];
                             } else {
                                 [self.inSpendOutput setObject:[NSNumber numberWithBool:YES] forKey:brutxo_obj(o)];
                             }
@@ -470,24 +493,24 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             BOOL pending = NO;
             UInt256 h;
             
-            for (NSValue *hash in tx.inputHashes) {
-                n = [tx.inputIndexes[i++] unsignedIntValue];
-                [hash getValue:&h];
-                [spent addObject:brutxo_obj(((BRUTXO) { h, n }))];
-            }
-            
-            inputs = [NSSet setWithArray:tx.inputHashes];
+//            for (NSValue *hash in tx.inputHashes) {
+//                n = [tx.inputIndexes[i++] unsignedIntValue];
+//                [hash getValue:&h];
+//                [spent addObject:brutxo_obj(((BRUTXO) { h, n }))];
+//            }
+//
+//            inputs = [NSSet setWithArray:tx.inputHashes];
             
             // check if any inputs are invalid or already spent
-            if (tx.blockHeight == TX_UNCONFIRMED &&
-                ([spent intersectsSet:spentOutputs] || [inputs intersectsSet:invalidTx])) {
-                [invalidTx addObject:uint256_obj(tx.txHash)];
-                [balanceHistory insertObject:@(balance) atIndex:0];
-                continue;
-            }
+//            if (tx.blockHeight == TX_UNCONFIRMED &&
+//                ([spent intersectsSet:spentOutputs] || [inputs intersectsSet:invalidTx])) {
+//                [invalidTx addObject:uint256_obj(tx.txHash)];
+//                [balanceHistory insertObject:@(balance) atIndex:0];
+//                continue;
+//            }
             
-            [spentOutputs unionSet:spent]; // add inputs to spent output set
-            n = 0;
+//            [spentOutputs unionSet:spent]; // add inputs to spent output set
+//            n = 0;
             
             // check if any inputs are pending
             if (tx.blockHeight == TX_UNCONFIRMED) {
@@ -529,24 +552,25 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
             }
             
             // transaction ordering is not guaranteed, so check the entire UTXO set against the entire spent output set
-            [spent setSet:utxos.set];
-            for (NSValue *output in spent) { // remove any spent outputs from UTXO set
-                BRTransaction *transaction;
-                BRUTXO o;
-                
-                [output getValue:&o];
-                if (![self isSpentOutput:o])
-                    continue;
-                
-                transaction = self.allTx[uint256_obj(o.hash)];
-                [utxos removeObject:output];
-                
-                uint64_t decodedAmount;
-                BRKey *decodedBlind = nil;
-                [self RevealTxOutAmount:transaction :o.n :&decodedAmount :&decodedBlind];
-                
-                balance -= decodedAmount;
-            }
+//            [spent setSet:utxos.set];
+//            for (NSValue *output in spent) { // remove any spent outputs from UTXO set
+//                BRTransaction *transaction;
+//                BRUTXO o;
+//
+//                [output getValue:&o];
+//                if (![self isSpentOutput:o])
+//                    continue;
+//
+//                transaction = self.allTx[uint256_obj(o.hash)];
+//                [utxos removeObject:output];
+//
+//                uint64_t decodedAmount;
+//                BRKey *decodedBlind = nil;
+//                [self RevealTxOutAmount:transaction :o.n :&decodedAmount :&decodedBlind];
+//
+//                balance -= decodedAmount;
+//            }
+            balance -= [self amountSentByTransaction:tx];
             
             if (prevBalance < balance) totalReceived += balance - prevBalance;
             if (balance < prevBalance) totalSent += prevBalance - balance;
@@ -557,7 +581,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
     
     self.invalidTx = invalidTx;
     self.pendingTx = pendingTx;
-    self.spentOutputs = spentOutputs;
+//    self.spentOutputs = spentOutputs;
     self.utxos = utxos;
     self.balanceHistory = balanceHistory;
     _totalSent = totalSent;
@@ -2884,21 +2908,26 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 }
 
 // retuns the amount sent from the wallet by the trasaction (total wallet outputs consumed, change and fee included)
-- (uint64_t)amountSentByTransaction:(BRTransaction *)transaction
+- (uint64_t)amountSentByTransaction:(BRTransaction *)tx
 {
-    uint64_t amount = 0;
-    NSUInteger i = 0;
+//    uint64_t amount = 0;
+//    NSUInteger i = 0;
     
-    for (NSValue *hash in transaction.inputHashes) {
-        BRTransaction *tx = self.allTx[hash];
-        uint32_t n = [transaction.inputIndexes[i++] unsignedIntValue];
-        
-        if (n < tx.outputAddresses.count && [self containsAddress:tx.outputAddresses[n]]) {
-            amount += [tx.outputAmounts[n] unsignedLongLongValue];
-        }
-    }
+//    for (NSValue *hash in transaction.inputHashes) {
+//        BRTransaction *tx = self.allTx[hash];
+//        uint32_t n = [transaction.inputIndexes[i++] unsignedIntValue];
+//
+//        if (n < tx.outputAddresses.count && [self containsAddress:tx.outputAddresses[n]]) {
+//            amount += [tx.outputAmounts[n] unsignedLongLongValue];
+//        }
+//    }
+//
+//    return amount;
     
-    return amount;
+    if ([self.spentBalance objectForKey:uint256_obj(tx.txHash)])
+        return [[self.spentBalance objectForKey:uint256_obj(tx.txHash)] unsignedLongLongValue];
+    
+    return 0;
 }
 
 // returns the fee for the given transaction if all its inputs are from wallet transactions, UINT64_MAX otherwise

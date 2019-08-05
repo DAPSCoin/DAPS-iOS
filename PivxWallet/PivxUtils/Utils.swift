@@ -39,6 +39,10 @@ class ReceiveController: UIViewController {
     @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "DapsReceiveViewController")
 }
 
+class HistoryController: UIViewController {
+    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "DapsHistoryViewController")
+}
+
 class Utils: NSObject {
     
     static var isTestnet:Bool = false;

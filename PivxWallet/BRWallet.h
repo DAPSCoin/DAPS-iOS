@@ -92,6 +92,7 @@ typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amoun
 @property (nonatomic, readonly) NSArray * _Nonnull unspentOutputs;
 
 @property (nonatomic, strong) NSMutableDictionary * _Nonnull spentOutputKeyImage;
+@property (nonatomic, strong) NSMutableDictionary * _Nonnull spentBalance;
 @property (nonatomic, strong) NSMutableDictionary * _Nonnull inSpendOutput;
 
 // amount reveal value

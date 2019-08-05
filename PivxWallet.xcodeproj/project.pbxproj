@@ -160,6 +160,7 @@
 		E335451322D3409400CC98FE /* pedersen-192.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544F822D3409400CC98FE /* pedersen-192.assn */; };
 		E335451422D3409400CC98FE /* pedersen-384.circ in Resources */ = {isa = PBXBuildFile; fileRef = E33544F922D3409400CC98FE /* pedersen-384.circ */; };
 		E335451522D3409400CC98FE /* pedersen-384.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544FA22D3409400CC98FE /* pedersen-384.assn */; };
+		E39D7E6622F88090005AF7A3 /* BRDapsHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E39D7E6422F8808E005AF7A3 /* BRDapsHistoryViewController.m */; };
 		E3E948CE22D7A24000A6A941 /* secp256k1_2.c in Sources */ = {isa = PBXBuildFile; fileRef = E3E948CD22D7A24000A6A941 /* secp256k1_2.c */; };
 		E3F3136922EF3F73001B4C1F /* BRDapsSendViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E3F3136822EF3F72001B4C1F /* BRDapsSendViewController.m */; };
 		E3F3137422EF9863001B4C1F /* SwiftyMenuDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F3136E22EF9863001B4C1F /* SwiftyMenuDelegate.swift */; };
@@ -588,6 +589,8 @@
 		E335453222D340C300CC98FE /* main_impl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = main_impl.h; sourceTree = "<group>"; };
 		E335453622D3496900CC98FE /* secp256k1_2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = secp256k1_2.h; sourceTree = "<group>"; };
 		E34725F322C41CEC0050348A /* PIVX.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = PIVX.entitlements; path = pivxwallet/PIVX.entitlements; sourceTree = "<group>"; };
+		E39D7E6422F8808E005AF7A3 /* BRDapsHistoryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRDapsHistoryViewController.m; sourceTree = "<group>"; };
+		E39D7E6522F8808F005AF7A3 /* BRDapsHistoryViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRDapsHistoryViewController.h; sourceTree = "<group>"; };
 		E3E948CD22D7A24000A6A941 /* secp256k1_2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = secp256k1_2.c; sourceTree = "<group>"; };
 		E3F3136722EF3F72001B4C1F /* BRDapsSendViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRDapsSendViewController.h; sourceTree = "<group>"; };
 		E3F3136822EF3F72001B4C1F /* BRDapsSendViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRDapsSendViewController.m; sourceTree = "<group>"; };
@@ -1056,6 +1059,8 @@
 				E3F3136822EF3F72001B4C1F /* BRDapsSendViewController.m */,
 				E3F3141122F0F77D001B4C1F /* BRDapsReceiveViewController.h */,
 				E3F3141222F0F77D001B4C1F /* BRDapsReceiveViewController.m */,
+				E39D7E6522F8808F005AF7A3 /* BRDapsHistoryViewController.h */,
+				E39D7E6422F8808E005AF7A3 /* BRDapsHistoryViewController.m */,
 				E32992CB22EA146400402A25 /* BRHomeViewController.h */,
 				E32992CC22EA146400402A25 /* BRHomeViewController.m */,
 				759FBB31193290F600AB4465 /* BRReceiveViewController.h */,
@@ -1928,6 +1933,7 @@
 				752E28AB19234AE300DB5A3C /* BRMerkleBlockEntity.m in Sources */,
 				E3F3140B22EF9A02001B4C1F /* ConstraintMakerRelatable.swift in Sources */,
 				2B8A1C9D1FEB594800C7427C /* EmptyTableCell.swift in Sources */,
+				E39D7E6622F88090005AF7A3 /* BRDapsHistoryViewController.m in Sources */,
 				BA7B53501BDA9A2800355E8D /* BRAppleWatchData.m in Sources */,
 				E32992CA22E9ABBF00402A25 /* BRSyncViewController.m in Sources */,
 				2B57356E1FE04C4200110745 /* Utils.swift in Sources */,

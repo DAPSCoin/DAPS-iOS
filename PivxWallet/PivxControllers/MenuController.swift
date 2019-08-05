@@ -14,11 +14,13 @@ class MenuController: BaseController {
     @IBOutlet weak var titleLabel2: UILabel!
     @IBOutlet weak var titleLabel3: UILabel!
     @IBOutlet weak var titleLabel4: UILabel!
+    @IBOutlet weak var titleLabel5: UILabel!
     
     @IBOutlet weak var titleImg1: UIImageView!
     @IBOutlet weak var titleImg2: UIImageView!
     @IBOutlet weak var titleImg3: UIImageView!
     @IBOutlet weak var titleImg4: UIImageView!
+    @IBOutlet weak var titleImg5: UIImageView!
     
     
     @IBOutlet weak var syncImageView: UIImageView!
@@ -77,6 +79,9 @@ class MenuController: BaseController {
         templateImage = titleImg4.image?.withRenderingMode(.alwaysTemplate)
         titleImg4.image = templateImage
         
+        templateImage = titleImg5.image?.withRenderingMode(.alwaysTemplate)
+        titleImg5.image = templateImage
+        
         
         let dictionary = Bundle.main.infoDictionary!
         let version = dictionary["CFBundleShortVersionString"] as! String
@@ -127,8 +132,20 @@ class MenuController: BaseController {
         optionSelected = 3
         selectTitle()
     }
-    @IBAction func tappedSettingButton(_ sender: Any) {
+    @IBAction func tappedHistoryButton(_ sender: Any) {
         if optionSelected == 4 {
+            slideMenuController()?.closeLeft()
+            return
+        }
+        let controller =  HistoryController.shared
+        //let controller = TxHistoryController.shared
+        let nav = UINavigationController(rootViewController: controller)
+        slideMenuController()?.changeMainViewController(nav, close: true)
+        optionSelected = 4
+        selectTitle()
+    }
+    @IBAction func tappedSettingButton(_ sender: Any) {
+        if optionSelected == 5 {
             slideMenuController()?.closeLeft()
             return
         }
@@ -136,7 +153,7 @@ class MenuController: BaseController {
         //let controller = TxHistoryController.shared
         let nav = UINavigationController(rootViewController: controller)
         slideMenuController()?.changeMainViewController(nav, close: true)
-        optionSelected = 4
+        optionSelected = 5
         selectTitle()
     }
 //    @IBAction func tappedDonationButton(_ sender: Any) {
@@ -156,11 +173,13 @@ class MenuController: BaseController {
         titleLabel2.textColor = UIColor.white
         titleLabel3.textColor = UIColor.white
         titleLabel4.textColor = UIColor.white
+        titleLabel5.textColor = UIColor.white
         
         titleImg1.tintColor = UIColor.white
         titleImg2.tintColor = UIColor.white
         titleImg3.tintColor = UIColor.white
         titleImg4.tintColor = UIColor.white
+        titleImg5.tintColor = UIColor.white
         
         switch optionSelected {
         case 1:
@@ -178,6 +197,10 @@ class MenuController: BaseController {
         case 4:
             titleLabel4.textColor = K.color.c70fbff
             titleImg4.tintColor = K.color.c70fbff
+            break
+        case 5:
+            titleLabel5.textColor = K.color.c70fbff
+            titleImg5.tintColor = K.color.c70fbff
             break
         default:
             print("default")
