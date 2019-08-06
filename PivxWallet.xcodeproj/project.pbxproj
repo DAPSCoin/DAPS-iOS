@@ -162,6 +162,8 @@
 		E335451522D3409400CC98FE /* pedersen-384.assn in Resources */ = {isa = PBXBuildFile; fileRef = E33544FA22D3409400CC98FE /* pedersen-384.assn */; };
 		E39D7E6622F88090005AF7A3 /* BRDapsHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E39D7E6422F8808E005AF7A3 /* BRDapsHistoryViewController.m */; };
 		E39D7E6822F8D78C005AF7A3 /* SearchDialog.xib in Resources */ = {isa = PBXBuildFile; fileRef = E39D7E6722F8D576005AF7A3 /* SearchDialog.xib */; };
+		E39D7E6B22F9CDEC005AF7A3 /* BRDapsTxDetailsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E39D7E6922F9CDEB005AF7A3 /* BRDapsTxDetailsViewController.m */; };
+		E39D7E6E22F9DF32005AF7A3 /* BRDapsSettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E39D7E6C22F9DF32005AF7A3 /* BRDapsSettingsViewController.m */; };
 		E3E948CE22D7A24000A6A941 /* secp256k1_2.c in Sources */ = {isa = PBXBuildFile; fileRef = E3E948CD22D7A24000A6A941 /* secp256k1_2.c */; };
 		E3F3136922EF3F73001B4C1F /* BRDapsSendViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E3F3136822EF3F72001B4C1F /* BRDapsSendViewController.m */; };
 		E3F3137422EF9863001B4C1F /* SwiftyMenuDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F3136E22EF9863001B4C1F /* SwiftyMenuDelegate.swift */; };
@@ -593,6 +595,10 @@
 		E39D7E6422F8808E005AF7A3 /* BRDapsHistoryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRDapsHistoryViewController.m; sourceTree = "<group>"; };
 		E39D7E6522F8808F005AF7A3 /* BRDapsHistoryViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRDapsHistoryViewController.h; sourceTree = "<group>"; };
 		E39D7E6722F8D576005AF7A3 /* SearchDialog.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = SearchDialog.xib; sourceTree = "<group>"; };
+		E39D7E6922F9CDEB005AF7A3 /* BRDapsTxDetailsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRDapsTxDetailsViewController.m; sourceTree = "<group>"; };
+		E39D7E6A22F9CDEC005AF7A3 /* BRDapsTxDetailsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRDapsTxDetailsViewController.h; sourceTree = "<group>"; };
+		E39D7E6C22F9DF32005AF7A3 /* BRDapsSettingsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRDapsSettingsViewController.m; sourceTree = "<group>"; };
+		E39D7E6D22F9DF32005AF7A3 /* BRDapsSettingsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRDapsSettingsViewController.h; sourceTree = "<group>"; };
 		E3E948CD22D7A24000A6A941 /* secp256k1_2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = secp256k1_2.c; sourceTree = "<group>"; };
 		E3F3136722EF3F72001B4C1F /* BRDapsSendViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BRDapsSendViewController.h; sourceTree = "<group>"; };
 		E3F3136822EF3F72001B4C1F /* BRDapsSendViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BRDapsSendViewController.m; sourceTree = "<group>"; };
@@ -1064,6 +1070,10 @@
 				E3F3141222F0F77D001B4C1F /* BRDapsReceiveViewController.m */,
 				E39D7E6522F8808F005AF7A3 /* BRDapsHistoryViewController.h */,
 				E39D7E6422F8808E005AF7A3 /* BRDapsHistoryViewController.m */,
+				E39D7E6A22F9CDEC005AF7A3 /* BRDapsTxDetailsViewController.h */,
+				E39D7E6922F9CDEB005AF7A3 /* BRDapsTxDetailsViewController.m */,
+				E39D7E6D22F9DF32005AF7A3 /* BRDapsSettingsViewController.h */,
+				E39D7E6C22F9DF32005AF7A3 /* BRDapsSettingsViewController.m */,
 				E32992CB22EA146400402A25 /* BRHomeViewController.h */,
 				E32992CC22EA146400402A25 /* BRHomeViewController.m */,
 				759FBB31193290F600AB4465 /* BRReceiveViewController.h */,
@@ -2026,6 +2036,7 @@
 				FB9CC2711F8E27B80079309F /* DWGenerateViewController.m in Sources */,
 				220128D31C753C670001CAC1 /* BRSocketHelpers.c in Sources */,
 				752E28E919234DA200DB5A3C /* NSManagedObject+Sugar.m in Sources */,
+				E39D7E6E22F9DF32005AF7A3 /* BRDapsSettingsViewController.m in Sources */,
 				E3F313FE22EF9A02001B4C1F /* ConstraintOffsetTarget.swift in Sources */,
 				E3F313F622EF9A02001B4C1F /* ConstraintInsetTarget.swift in Sources */,
 				BA7B53541BDAA0A800355E8D /* BRAppleWatchTransactionData.m in Sources */,
@@ -2041,6 +2052,7 @@
 				752E28EB19234DA200DB5A3C /* NSString+Bitcoin.m in Sources */,
 				E3F3136922EF3F73001B4C1F /* BRDapsSendViewController.m in Sources */,
 				757C89521A2FCE420076B373 /* BRSettingsViewController.m in Sources */,
+				E39D7E6B22F9CDEC005AF7A3 /* BRDapsTxDetailsViewController.m in Sources */,
 				75D5F3D2191EC270004AB296 /* BRAppDelegate.m in Sources */,
 				759FBB36193290F600AB4465 /* BRRootViewController.m in Sources */,
 				E3F3140522EF9A02001B4C1F /* Constraint.swift in Sources */,

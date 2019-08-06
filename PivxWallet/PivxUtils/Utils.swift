@@ -28,7 +28,8 @@ class HomeController: UIViewController {
 }
 
 class SettingsController: UIViewController {
-    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "SettingsViewController")
+//    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "SettingsViewController")
+    @objc static let shared = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "DapsSettingsViewController")
 }
 
 class SendController: UIViewController {

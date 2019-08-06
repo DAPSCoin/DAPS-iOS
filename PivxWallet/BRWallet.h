@@ -189,6 +189,8 @@ typedef void (^SeedRequestBlock)(NSString * _Nullable authprompt, uint64_t amoun
 - (bool)verifyRingCT:(BRTransaction *)wtxNew;
 
 // true if the transaction is to me
+- (NSString *)getTransactionDestAddress:(BRTransaction *)transaction;
+- (uint64_t)spentAmountByTransaction:(BRTransaction *)tx;
 - (BOOL)IsTransactionForMe:(BRTransaction * _Nonnull)transaction;
 - (BOOL)RevealTxOutAmount:(BRTransaction * _Nonnull)transaction :(NSUInteger)outIndex :(UInt64 *_Nullable)amount :(BRKey ** _Nonnull)blind;
 - (BOOL)ComputeSharedSec:(BRTransaction * _Nonnull)transaction :(NSMutableData*)outTxPub :(NSMutableData ** _Nonnull)sharedSec;

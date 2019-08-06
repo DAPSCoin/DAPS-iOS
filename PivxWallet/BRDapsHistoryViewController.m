@@ -24,10 +24,12 @@
 //  THE SOFTWARE.
 
 #import "BRDapsHistoryViewController.h"
+#import "BRDapsTxDetailsViewController.h"
 #import "BRPeerManager.h"
 #import "BRWalletManager.h"
 #import "BRTransaction.h"
 #import "pivxwallet-Swift.h"
+#import "NSString+Bitcoin.h"
 
 @interface BRDapsHistoryViewController ()
 
@@ -147,22 +149,24 @@
     
     BRTransaction *tx = manager.wallet.allTransactions[indexPath.row];
     uint64_t received = [manager.wallet amountReceivedFromTransaction:tx],
+    spent = [manager.wallet spentAmountByTransaction:tx],
     sent = [manager.wallet amountSentByTransaction:tx],
     balance = [manager.wallet balanceAfterTransaction:tx];
     
     NSString *balanceString = @"";
     int64_t diff = received - sent;
-    if (diff > 0) {
-        balanceString = [balanceString stringByAppendingString:@"+ "];
+    if (spent > 0) {
+        balanceString = [balanceString stringByAppendingString:@"- "];
         balanceLabel.textColor = [UIColor rgb:150 green:255 blue:131 alpha:255];
+        balance = sent;
     }
     else {
-        balanceString = [balanceString stringByAppendingString:@"- "];
+        balanceString = [balanceString stringByAppendingString:@"+ "];
         balanceLabel.textColor = [UIColor rgb:147 green:103 blue:144 alpha:255];
-        diff *= -1;
+        balance = received;
     }
     
-    balanceLabel.text = [balanceString stringByAppendingString:[manager attributedStringForDashAmount:diff withTintColor:[UIColor whiteColor]].string];
+    balanceLabel.text = [balanceString stringByAppendingString:[manager attributedStringForDashAmount:balance withTintColor:[UIColor whiteColor]].string];
     dateLabel.text = [self dateForTx:tx];
     timeLabel.text = [self timeForTx:tx];
     
@@ -181,6 +185,32 @@
     v.backgroundColor = [UIColor clearColor];
     
     return v;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    BRWalletManager *manager = [BRWalletManager sharedInstance];
+    BRDapsTxDetailsViewController *destinationController = [self.storyboard instantiateViewControllerWithIdentifier:@"DapsTxDetailsViewController"];
+    
+    BRTransaction *tx = manager.wallet.allTransactions[indexPath.row];
+    uint64_t balance = [manager.wallet balanceAfterTransaction:tx],
+    spent = [manager.wallet spentAmountByTransaction:tx],
+    received = [manager.wallet amountReceivedFromTransaction:tx],
+    sent = [manager.wallet amountSentByTransaction:tx];
+    
+    destinationController.strDestAddress = [manager.wallet getTransactionDestAddress:tx];
+    if (spent > 0)
+        destinationController.strAmount = [manager attributedStringForDashAmount:sent withTintColor:[UIColor whiteColor]].string;
+    else
+        destinationController.strAmount = [manager attributedStringForDashAmount:received withTintColor:[UIColor whiteColor]].string;
+    destinationController.strFee = [manager attributedStringForDashAmount:tx.nTxFee withTintColor:[UIColor whiteColor]].string;
+    destinationController.strBalance = [manager attributedStringForDashAmount:balance withTintColor:[UIColor whiteColor]].string;
+    destinationController.strStealthAddress = manager.wallet.receiveStealthAddress;
+    
+    destinationController.strTransactionID = [NSString hexWithData:[NSData dataWithBytes:tx.txHash.u8 length:sizeof(UInt256)].reverse];
+    destinationController.strDate = [self dateForTx:tx];
+    destinationController.strTime = [self timeForTx:tx];
+    
+    [self.navigationController pushViewController:destinationController animated:YES];
 }
 
 @end

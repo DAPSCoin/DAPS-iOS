@@ -37,6 +37,7 @@
 #import "BRMerkleBlock.h"
 #import "NSData+Bitcoin.h"
 #import "NSString+Bitcoin.h"
+#import "NSString+Dash.h"
 #import "NSMutableData+Bitcoin.h"
 #import "NSManagedObject+Sugar.h"
 #include "secp256k1_bulletproofs.h"
@@ -570,7 +571,7 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 //
 //                balance -= decodedAmount;
 //            }
-            balance -= [self amountSentByTransaction:tx];
+            balance -= [self spentAmountByTransaction:tx];
             
             if (prevBalance < balance) totalReceived += balance - prevBalance;
             if (balance < prevBalance) totalSent += prevBalance - balance;
@@ -2924,6 +2925,25 @@ static NSUInteger txAddressIndex(BRTransaction *tx, NSArray *chain) {
 //
 //    return amount;
     
+    
+    for (int i = 0; i < tx.outputAmounts.count; i++) {
+        NSData *scriptPubKey = tx.outputScripts[i];
+        NSMutableData *pubKey = [NSMutableData secureDataWithCapacity:33];
+        [pubKey appendPubKey:scriptPubKey];
+        if (![self HaveKey:pubKey])
+            continue;
+        
+        
+        UInt64 c = 0;
+        BRKey *blind;
+        [self RevealTxOutAmount:tx :i :&c :&blind];
+        return c;
+    }
+    
+    return 0;
+}
+
+- (uint64_t)spentAmountByTransaction:(BRTransaction *)tx {
     if ([self.spentBalance objectForKey:uint256_obj(tx.txHash)])
         return [[self.spentBalance objectForKey:uint256_obj(tx.txHash)] unsignedLongLongValue];
     
